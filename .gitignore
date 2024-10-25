@@ -1,0 +1,9 @@
+.env
+bin
+*_templ.go*
+node_modules
+.aws-sam
+tmp
+optimize/*
+public/styles.css
+main

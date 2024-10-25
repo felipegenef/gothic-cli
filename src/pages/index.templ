@@ -1,0 +1,14 @@
+package pages
+
+import (
+	"github.com/felipegenef/gothic-cli/src/components"
+	"github.com/felipegenef/gothic-cli/src/layouts"
+	)
+
+templ Index() {
+		@layouts.PageLayout(){
+			@components.HelloWorld()
+			@components.OptimizedImage(true,"imageExample","webp")
+		}
+
+}

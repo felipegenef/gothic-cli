@@ -1,0 +1,222 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  gothic-example
+  
+  Sample SAM Template for gothic-cli
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 128
+
+Parameters:
+  Stage:
+    AllowedValues:
+      - default
+      - dev
+      - staging
+      - prod
+    Description: 'Pass your Stage to get parameters from SSM'
+    Type: String
+    Default: default
+
+Mappings:
+  StagesMap:
+    default:
+      BucketName: "gothic-example-public-bucket"
+      LambdaName: "gothic-example-lambda-app"
+    dev:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
+    staging:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
+    prod:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
+
+Resources:
+  GothServer:
+    Type: AWS::Serverless::Function 
+    Properties:
+      FunctionName: !FindInMap [ StagesMap, !Ref Stage, LambdaName ]
+      PackageType: Image
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          HTTP_LISTEN_ADDR: ":8080" ## Labda WEB adapters use port 8080 by default.
+          ## Change to true if you are not using CloudFront as CDN to serve your images. Instead you will serve images from the server directly.
+          LOCAL_SERVE: false 
+      FunctionUrlConfig:
+        AuthType:  AWS_IAM
+    Metadata:
+      DockerTag: provided
+      DockerContext: ./
+      Dockerfile: Dockerfile
+  # CloudFront Distribution with Lambda function URL as the origin with Origin and Behaviors configuration 
+  # following best practices for a Lambda function URL origin.
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        CacheBehaviors:
+          - PathPattern: "/public/*"
+            TargetOriginId: publicAssets
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            CachePolicyId: !Ref PublicAssetsCachingPolicy
+
+        Origins:
+          - DomainName: !GetAtt Bucket.DomainName
+            Id: publicAssets
+            OriginAccessControlId: !Ref BucketFrontOriginAccessControl
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+          - DomainName: !Select [2, !Split ["/", !GetAtt GothServerUrl.FunctionUrl]] 
+            Id: ServerRoutes
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+              OriginKeepaliveTimeout: 60
+            OriginAccessControlId: !Ref ServerCloudFrontOriginAccessControl 
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: ServerRoutes
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachePolicyId: !Ref ServerCachingDisabledPolicy
+          ForwardedValues:
+            QueryString: true
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+          MinimumProtocolVersion: TLSv1.2_2021
+        HttpVersion: http2
+        PriceClass: PriceClass_All
+
+  # Permission to invoke the Lambda function from the CloudFront Distrinbution
+  ServerLambdaInvokePermissionForCloudFront:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GothServer
+      Action: lambda:InvokeFunctionUrl
+      Principal: "cloudfront.amazonaws.com"
+      SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+      SourceAccount: !Sub "${AWS::AccountId}"
+
+  # Origin Access Control to associate with the CloudFront Distribution    
+  ServerCloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac-for-goth-server" 
+        SigningBehavior: always
+        OriginAccessControlOriginType: lambda
+        SigningProtocol: sigv4
+  BucketFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name:  !Sub "${AWS::StackName}-oac-for-goth-bucket" 
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+  # Recommended cache policy to disable caching for the Lambda function URL origin
+  ServerCachingDisabledPolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${AWS::StackName}-cache-policy"
+        DefaultTTL: 0
+        MaxTTL: 31536000
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: none
+          CookiesConfig:
+            CookieBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+  PublicAssetsCachingPolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${AWS::StackName}-bucket-cache-policy"
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 1
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+# Public Folder Bucket
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !FindInMap [ StagesMap, !Ref Stage, BucketName ]
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  # Creates a bucket policy giving OAC read-only access to the S3 bucket.
+  # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Action:
+            - 's3:GetObject'
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Resource: !Sub "${Bucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution.Id}"
+
+
+Outputs:
+  # CloudFrontDistributionId:
+  #   Description: "The CloudFront Distribution ID"
+  #   Value: !Ref CloudFrontDistribution
+  CloudFrontDomainName:
+    Description: "The CloudFront Distribution Domain Name"
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  GothServerLambdaURL:
+    Description: "Lambda function url to access server"
+    Value: !GetAtt GothServerUrl.FunctionUrl
+  # GothServerARN:
+  #   Description: "Lambda Function ARN"
+  #   Value: !GetAtt GothServer.Arn
+  # GothServerIamRole:
+  #   Description: "Implicit IAM Role created for Serverfunction"
+  #   Value: !GetAtt GothServerRole.Arn
