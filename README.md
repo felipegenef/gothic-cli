@@ -122,9 +122,9 @@ _Example_
 ```go
 templ OptimizedImage(isFirstLoad bool, imgName string, imgExtension string) {
     if isFirstLoad {
-        <img class={"min-w-[500px] min-h-[500px]"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension} src={"/public/"+imgName+"/blurred."+imgExtension}/>
+        <img class={"w-[500px] h-[500px]"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension} src={"/public/"+imgName+"/blurred."+imgExtension}/>
     } else {
-        <img class={"min-w-[500px] min-h-[500px]"} src={"/public/"+imgName+"/original."+imgExtension}/>
+        <img class={"w-[500px] h-[500px]"} src={"/public/"+imgName+"/original."+imgExtension}/>
     }
 }
 ```
