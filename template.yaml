@@ -24,8 +24,8 @@ Parameters:
 Mappings:
   StagesMap:
     default:
-      BucketName: "gothic-example-public-bucket"
-      LambdaName: "gothic-example-lambda-app"
+      BucketName: "gothic-example-public-bucket-default"
+      LambdaName: "gothic-example-lambda-app-default"
     dev:
       BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
       LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"

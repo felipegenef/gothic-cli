@@ -1,11 +1,11 @@
 STAGE ?= default
-S3_BUCKET ?= gothic-example-public-bucket
+S3_BUCKET ?= gothic-example-public-bucket-$(STAGE)
 
 # Commands
 TEMPL_CMD = templ generate
 TAILWIND_CMD = ./tailwindcss -i src/css/app.css -o public/styles.css
 SAM_BUILD_CMD = sam build
-SAM_DEPLOY_CMD = sam deploy --parameter-overrides Stage=$(STAGE)
+SAM_DEPLOY_CMD = sam deploy --stack-name gothic-example-${STAGE} --parameter-overrides Stage=$(STAGE)
 AWS_CP_CMD = aws s3 cp public s3://$(S3_BUCKET)/public --recursive
 SERVE_APP_CMD = air
 HOT_RELOAD_CMD = go run CLI/HotReload/main.go

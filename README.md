@@ -180,6 +180,60 @@ router.Get("/revalidateEvery10SecPage", func(w http.ResponseWriter, r *http.Requ
 
 Currently, we have not implemented multi-region functions, as AWS Edge Functions do not support container images or Golang images. Please feel free to submit a pull request when this feature becomes available.
 
+### Fetch environment variables from Parameter Store
+
+_example_
+
+- Add _/GOTHIC-STACK/dev/bucket-name_ and _/GOTHIC-STACK/dev/lambda-name_
+- Deploy your application in DEV stage.
+
+You can add variables directly to the template using the _resolve:ssm_ as shown below. We recommend storing variables for each Stage. Please read more of how to do it in the next topic `Multi-Stage Deployments`
+
+### Multi-Stage Deployments
+
+Deploy the same app In different stages with a simple command:
+
+```bash
+make deploy Stage=dev
+```
+
+Other Stage options:
+
+- default
+- dev
+- staging
+- prod
+
+To add more options please edit your _template.yaml_
+
+```yaml
+Parameters:
+  Stage:
+    AllowedValues:
+      - default
+      - dev
+      - staging
+      - prod
+    Description: "Pass your Stage to get parameters from SSM"
+    Type: String
+    Default: default
+
+Mappings:
+  StagesMap:
+    default:
+      BucketName: "gothic-example-public-bucket-default"
+      LambdaName: "gothic-example-lambda-app-default"
+    dev:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
+    staging:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
+    prod:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
+```
+
 ## TODOs
 
 - [x] SEO Optimized Image Load
@@ -187,6 +241,11 @@ Currently, we have not implemented multi-region functions, as AWS Edge Functions
 - [x] Incremental Static Regeneration in Public Pages (ISR)
 - [x] Hot Reload locally
 - [x] Fetch environment variables from Parameter Store
+- [x] Multi-Stage Deployments
 - [ ] Custom Domain
 - [ ] Delete or set a limit for old ECR images
 - [ ] Multi-Region (Edge)
+
+```
+
+```
