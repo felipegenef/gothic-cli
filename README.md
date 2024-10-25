@@ -53,6 +53,8 @@ make deploy
 
 ## Infrastructure
 
+<img alt="background doc" src="Doc/Assets/Infrastructure.jpeg" width="100%"/>
+
 To ensure a smooth developer experience, we have designed the default infrastructure to be 100% serverless. This allows you to focus on web app development and business logic without worrying about infrastructure and scalability.
 
 ### CDN
