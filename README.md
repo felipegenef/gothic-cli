@@ -242,6 +242,13 @@ Mappings:
 - [x] Hot Reload locally
 - [x] Fetch environment variables from Parameter Store
 - [x] Multi-Stage Deployments
+- [x] Boilerplate command to create project structure
+- [ ] Boilerplate command to create Page
+- [ ] Boilerplate command to create static Page
+- [ ] Boilerplate command to create ISR Page
+- [ ] Boilerplate command to create api route
+- [ ] Boilerplate command to create ISR cache api route
 - [ ] Custom Domain
 - [ ] Delete or set a limit for old ECR images
 - [ ] Multi-Region (Edge)
+- [ ] Website Docs
