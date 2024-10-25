@@ -1,6 +1,6 @@
-# Gothic-cli
+<img alt="background doc" src="Doc/Assets/background.jpeg" width="100%" height="280"/>
 
-A Golang tool for building modern web applications inspired by Next.js, utilizing the GOTTH stack and AWS SAM.
+# <img alt="background doc" src="Doc/Assets/logo.jpeg" width="100" /> Gothic-cli
 
 ## The Tool
 
@@ -245,7 +245,3 @@ Mappings:
 - [ ] Custom Domain
 - [ ] Delete or set a limit for old ECR images
 - [ ] Multi-Region (Edge)
-
-```
-
-```
