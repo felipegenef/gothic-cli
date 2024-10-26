@@ -132,6 +132,7 @@ public/styles.css`
 var rootDirs = []string{"public", "CLI", "src", "optimize"}
 var cliDirs = []string{"CLI/HotReload", "CLI/imgOptimization"}
 var srcDirs = []string{"src/api", "src/components", "src/css", "src/layouts", "src/pages", "src/utils"}
+var publicDirs = []string{"public/imageExample"}
 
 var cliFiles = map[string]embed.FS{
 	"CLI/HotReload/main.go":       hotReloadScript,
@@ -210,6 +211,12 @@ func initializeProject() error {
 		}
 	}
 
+	for _, dir := range publicDirs {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return err
+		}
+	}
+
 	for _, dir := range cliDirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			return err
@@ -221,6 +228,7 @@ func initializeProject() error {
 			return err
 		}
 	}
+
 	// Create dot files (embed api wont let dots on files)
 	go func() {
 		os.WriteFile(".air.toml", []byte(airToml), 0644)
