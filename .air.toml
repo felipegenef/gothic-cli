@@ -3,7 +3,7 @@ tmp_dir = "tmp"
 
 [build]
   bin = "./tmp/main"
-  cmd = "./tailwindcss -i src/css/app.css -o public/styles.css && templ generate && go build -o ./tmp/main main.go"
+  cmd = "./tailwindcss -i src/css/app.css -o public/styles.css && go run CLI/imgOptimization/main.go && templ generate && go build -o ./tmp/main main.go"
     
   delay = 2
   exclude_dir = ["assets", "tmp", "vendor","public"]
