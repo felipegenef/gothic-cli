@@ -50,6 +50,15 @@ var hotReloadScript embed.FS
 //go:embed CLI/imgOptimization/main.go
 var imgOptimizationScript embed.FS
 
+//go:embed public/imageExample/blurred.jpeg
+var imgOptimizationBlurredImg embed.FS
+
+//go:embed public/imageExample/original.jpeg
+var imgOptimizationOriginalImg embed.FS
+
+//go:embed public/favicon.ico
+var favicon embed.FS
+
 //go:embed src/api/helloWorld.go
 var apiExample embed.FS
 
@@ -127,6 +136,12 @@ var srcDirs = []string{"src/api", "src/components", "src/css", "src/layouts", "s
 var cliFiles = map[string]embed.FS{
 	"CLI/HotReload/main.go":       hotReloadScript,
 	"CLI/imgOptimization/main.go": imgOptimizationScript,
+}
+
+var publicFolderFiles = map[string]embed.FS{
+	"public/imageExample/blurred.jpeg":  imgOptimizationBlurredImg,
+	"public/imageExample/original.jpeg": imgOptimizationOriginalImg,
+	"public/favicon.ico":                favicon,
 }
 
 var srcFiles = map[string]embed.FS{
@@ -243,6 +258,9 @@ func initializeProject() error {
 	}
 
 	if err := createFiles(cliFiles); err != nil {
+		return err
+	}
+	if err := createFiles(publicFolderFiles); err != nil {
 		return err
 	}
 	if err := createFiles(srcFiles); err != nil {
