@@ -8,7 +8,12 @@ import (
 templ Index() {
 		@layouts.PageLayout(){
 			@components.HelloWorld()
-			@components.OptimizedImage(true,"imageExample","webp")
+			@components.OptimizedImage(true,"imageExample","jpeg")
+			<div class="flex flex-col justify-center items-center max-w-xl text-center">
+				<p class="font-normal text-gray-400 text-base sm:text-xl">Do you want to build <span class="font-semibold text-white">Modern Web Apps</span> with the <span class="font-bold text-cyan-400 text-lg sm:text-2xl">Go</span> programing language as if it was <span class="font-bold text-yellow-400 text-base sm:text-xl">Javascript</span>?</p>
+				<a class="font-semibold text-white text-base sm:text-xl py-4 px-6 sm:px-10 bg-purple-400 hover:bg-purple-300 mt-20 rounded-md" href="https://github.com/felipegenef/gothic-cli">Have a look in our Docs</a>
+			</div>
+	
 		}
 
 }

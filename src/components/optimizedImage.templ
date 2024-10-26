@@ -18,9 +18,9 @@ package components
 	*/
 templ OptimizedImage(isFirstLoad bool,imgName string, imgExtension string) {
         if isFirstLoad {
-            <img class={"w-[500px] h-[500px]"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension} src={"/public/"+imgName+"/blurred."+imgExtension}/>
+            <img class={"sm:w-[300px] sm:h-[300px] w-[200px] :h-[200px] rounded-full animate-pulse my-10"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension} src={"/public/"+imgName+"/blurred."+imgExtension}/>
         }else{
-            <img class={"w-[500px] h-[500px]"} src={"/public/"+imgName+"/original."+imgExtension}/>
+            <img class={"sm:w-[300px] sm:h-[300px] w-[200px] :h-[200px] rounded-full animate-pulse my-10"} src={"/public/"+imgName+"/original."+imgExtension}/>
         }
       
 }

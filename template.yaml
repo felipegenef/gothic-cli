@@ -26,15 +26,23 @@ Mappings:
     default:
       BucketName: "gothic-example-public-bucket-default"
       LambdaName: "gothic-example-lambda-app-default"
+      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
+      localServe: false
     dev:
       BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
       LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
+      localServe: false
+      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
     staging:
       BucketName: "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}"
       LambdaName: "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
+      localServe: false
+      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
     prod:
       BucketName: "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}"
       LambdaName: "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
+      localServe: false
+      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
 
 Resources:
   GothServer:
@@ -46,9 +54,9 @@ Resources:
         - x86_64
       Environment:
         Variables:
-          HTTP_LISTEN_ADDR: ":8080" ## Labda WEB adapters use port 8080 by default.
+          HTTP_LISTEN_ADDR: !FindInMap [ StagesMap, !Ref Stage, HttpServerPort ] ## Labda WEB adapters use port 8080 by default.
           ## Change to true if you are not using CloudFront as CDN to serve your images. Instead you will serve images from the server directly.
-          LOCAL_SERVE: false 
+          LOCAL_SERVE: !FindInMap [ StagesMap, !Ref Stage, localServe ] 
       FunctionUrlConfig:
         AuthType:  AWS_IAM
     Metadata:
