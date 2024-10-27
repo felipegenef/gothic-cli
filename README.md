@@ -120,12 +120,13 @@ newHeight := originalHeight * 20 / 100
 _Example_
 
 ```go
-templ OptimizedImage(isFirstLoad bool, imgName string, imgExtension string) {
-    if isFirstLoad {
-        <img class={"w-[500px] h-[500px]"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension} src={"/public/"+imgName+"/blurred."+imgExtension}/>
-    } else {
-        <img class={"w-[500px] h-[500px]"} src={"/public/"+imgName+"/original."+imgExtension}/>
-    }
+templ OptimizedImage(isFirstLoad bool,imgName string, imgExtension string,alt string) {
+        if isFirstLoad {
+            <img alt={alt} class={"w-full h-full"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension+"/"+alt} src={"/public/"+imgName+"/blurred."+imgExtension}/>
+        }else{
+            <img alt={alt} class={"w-full h-full"} src={"/public/"+imgName+"/original."+imgExtension}/>
+        }
+
 }
 ```
 
@@ -135,9 +136,12 @@ _Example_
 
 ```go
 templ Index() {
-    @layouts.PageLayout() {
-        @components.OptimizedImage(true, "imageExample", "webp")
-    }
+		@layouts.PageLayout(){
+			<div class="sm:w-[300px] sm:h-[300px] w-[200px] h-[200px]">
+				@components.OptimizedImage(true,"imageExample","jpeg","image example alt text")
+			</div>
+		}
+
 }
 ```
 
@@ -146,11 +150,12 @@ templ Index() {
 _Example_
 
 ```go
-router.Get("/optimizedImage/{name}/{extension}", func(w http.ResponseWriter, r *http.Request) {
-    imgName := chi.URLParam(r, "name")
-    imgExtension := chi.URLParam(r, "extension")
-    handler.Render(r, w, components.OptimizedImage(false, imgName, imgExtension))
-})
+	router.Get("/optimizedImage/{name}/{extension}/{alt}", func(w http.ResponseWriter, r *http.Request) {
+		imgName := chi.URLParam(r, "name")
+		imgExtension := chi.URLParam(r, "extension")
+		imgAlt := chi.URLParam(r, "alt")
+		handler.Render(r, w, components.OptimizedImage(false, imgName, imgExtension, imgAlt))
+	})
 ```
 
 ### Public Static Pages CDN Caching
@@ -236,6 +241,113 @@ Mappings:
       LambdaName: "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
 ```
 
+### Custom Domain
+
+To add your custom domain for each stage please follow the steps below:
+
+#### Ucomment and fulfill your domain information on `template.yaml`
+
+We recommend using SSM for storing your hostedZoneId once it is a sensitive information.
+
+```yaml
+Mappings:
+  StagesMap:
+    default:
+      BucketName: "gothic-example-public-bucket-default"
+      LambdaName: "gothic-example-lambda-app-default"
+      # customDomain: "default.yourDomain.com"
+      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/default/domain-hosted-zone}}" # The one from your domain
+      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
+    dev:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
+      # customDomain: "dev.yourDomain.com"
+      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/dev/domain-hosted-zone}}" # The one from your domain
+      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
+    staging:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
+      # customDomain: "staging.yourDomain.com"
+      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/staging/domain-hosted-zone}}" # The one from your domain
+      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
+    prod:
+      BucketName: "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}"
+      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
+      # customDomain: "yourDomain.com"
+      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/prod/domain-hosted-zone}}" # The one from your domain
+      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
+```
+
+#### Ucomment AppCustomCertificate `template.yaml`
+
+This will create a privite ACM certificate for your domain or subdomain during build time.
+
+```yaml
+# AppCustomCertificate:
+#   Type: AWS::CertificateManager::Certificate
+#   Properties:
+#     DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
+#     ValidationMethod: DNS
+#     DomainValidationOptions:
+#       - DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
+#         HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
+#     SubjectAlternativeNames:
+#       - !FindInMap [StagesMap, !Ref Stage, customDomain]
+```
+
+#### Ucomment DependsOn on CloudFrontDistribution resource on `template.yaml`
+
+This will make sure the CDN will only be created after the certificate is emitted and validated.
+
+```yaml
+CloudFrontDistribution:
+  Type: AWS::CloudFront::Distribution
+  # DependsOn: AppCustomCertificate
+```
+
+#### 1) Ucomment AcmCertificateArn, SslSupportMethod and Aliases on ViewerCertificate resource on `template.yaml`
+
+##### 2) Comment or remove CloudFrontDefaultCertificate: true from the same resource
+
+This will add an alias to your CDN redirecting any traffic from your custom domain to the CDN
+
+```yaml
+ViewerCertificate:
+  CloudFrontDefaultCertificate: true
+  MinimumProtocolVersion: TLSv1.2_2021
+#   AcmCertificateArn: !Ref AppCustomCertificate
+#   SslSupportMethod: sni-only
+# Aliases:
+#   - !FindInMap [StagesMap, !Ref Stage, customDomain]
+```
+
+#### Ucomment CustomDomainRoute53RecordSet resource on `template.yaml`
+
+This will add a route53 record that will redirect requests from your route53 domain to the CDN
+
+```yaml
+# CustomDomainRoute53RecordSet:
+#   DependsOn: CloudFrontDistribution
+#   Type: AWS::Route53::RecordSet
+#   Properties:
+#     HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
+#     Name: !FindInMap [StagesMap, !Ref Stage, customDomain]
+#     Type: A
+#     AliasTarget:
+#       DNSName: !GetAtt CloudFrontDistribution.DomainName
+#       HostedZoneId: "Z2FDTNDATAQYW2" # Mocked value for all cloudfront apis besides china (Z3RFFRIM2A3IF5)
+```
+
+#### Ucomment CloudFrontCustomDomainName output on `template.yaml`
+
+This will show your custom domain attached to your CDN on the terminal after deployment
+
+```yaml
+# CloudFrontCustomDomainName:
+#   Description: "The CloudFront Distribution Domain Name"
+#   Value: !FindInMap [ StagesMap, !Ref Stage, customDomain ]
+```
+
 ## TODOs
 
 - [x] SEO Optimized Image Load
@@ -244,13 +356,13 @@ Mappings:
 - [x] Hot Reload locally
 - [x] Fetch environment variables from Parameter Store
 - [x] Multi-Stage Deployments
+- [x] Custom Domain
 - [x] Boilerplate command to create project structure
 - [ ] Boilerplate command to create Page
 - [ ] Boilerplate command to create static Page
 - [ ] Boilerplate command to create ISR Page
 - [ ] Boilerplate command to create api route
 - [ ] Boilerplate command to create ISR cache api route
-- [ ] Custom Domain
 - [ ] Delete or set a limit for old ECR images
 - [ ] Multi-Region (Edge)
 - [ ] Website Docs

@@ -98,10 +98,11 @@ func startServer() {
 	*
 	*
 	 */
-	router.Get("/optimizedImage/{name}/{extension}", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/optimizedImage/{name}/{extension}/{alt}", func(w http.ResponseWriter, r *http.Request) {
 		imgName := chi.URLParam(r, "name")
 		imgExtension := chi.URLParam(r, "extension")
-		handler.Render(r, w, components.OptimizedImage(false, imgName, imgExtension))
+		imgAlt := chi.URLParam(r, "alt")
+		handler.Render(r, w, components.OptimizedImage(false, imgName, imgExtension, imgAlt))
 	})
 	/**
 	*                                 API ROUTES

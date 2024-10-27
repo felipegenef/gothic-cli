@@ -26,9 +26,6 @@ var mainServerFile embed.FS
 //go:embed makefile
 var makeFile embed.FS
 
-//go:embed postcss.config.js
-var postCSSConfig embed.FS
-
 //go:embed samconfig.toml
 var samConfigTom embed.FS
 
@@ -88,7 +85,7 @@ tmp_dir = "tmp"
 
 [build]
   bin = "./tmp/main"
-  cmd = "./tailwindcss -i src/css/app.css -o public/styles.css && templ generate && go build -o ./tmp/main main.go"
+  cmd = "./tailwindcss -i src/css/app.css -o public/styles.css --minify && templ generate && go build -o ./tmp/main main.go"
     
   delay = 2
   exclude_dir = ["assets", "tmp", "vendor","public"]
@@ -150,7 +147,6 @@ var srcFiles = map[string]embed.FS{
 	"go.mod":             goMod,
 	"go.sum":             goSum,
 	"makefile":           makeFile,
-	"postcss.config.js":  postCSSConfig,
 	"samconfig.toml":     samConfigTom,
 	"tailwind.config.js": tailwindConfig,
 	"template.yaml":      templateYaml,

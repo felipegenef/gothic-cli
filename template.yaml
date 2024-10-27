@@ -1,8 +1,8 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   gothic-example
-  
+
   Sample SAM Template for gothic-cli
 
 Globals:
@@ -17,7 +17,7 @@ Parameters:
       - dev
       - staging
       - prod
-    Description: 'Pass your Stage to get parameters from SSM'
+    Description: "Pass your Stage to get parameters from SSM"
     Type: String
     Default: default
 
@@ -26,47 +26,64 @@ Mappings:
     default:
       BucketName: "gothic-example-public-bucket-default"
       LambdaName: "gothic-example-lambda-app-default"
+      # customDomain: "default.yourDomain.com"
+      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/default/domain-hosted-zone}}" # The one from your domain
       HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-      localServe: false
     dev:
       BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
-      localServe: false
+      LambdaName:
+        "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
+      # customDomain: "dev.yourDomain.com"
+      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/dev/domain-hosted-zone}}" # The one from your domain
       HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
     staging:
       BucketName: "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
-      localServe: false
+      LambdaName:
+        "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
+      # customDomain: "staging.yourDomain.com"
+      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/staging/domain-hosted-zone}}" # The one from your domain
       HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
     prod:
       BucketName: "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
-      localServe: false
+      LambdaName:
+        "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
+      # customDomain: "yourDomain.com"
+      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/prod/domain-hosted-zone}}" # The one from your domain
       HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
 
 Resources:
   GothServer:
-    Type: AWS::Serverless::Function 
+    Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !FindInMap [ StagesMap, !Ref Stage, LambdaName ]
+      FunctionName: !FindInMap [StagesMap, !Ref Stage, LambdaName]
       PackageType: Image
       Architectures:
         - x86_64
       Environment:
         Variables:
-          HTTP_LISTEN_ADDR: !FindInMap [ StagesMap, !Ref Stage, HttpServerPort ] ## Labda WEB adapters use port 8080 by default.
-          ## Change to true if you are not using CloudFront as CDN to serve your images. Instead you will serve images from the server directly.
-          LOCAL_SERVE: !FindInMap [ StagesMap, !Ref Stage, localServe ] 
+          HTTP_LISTEN_ADDR: !FindInMap [StagesMap, !Ref Stage, HttpServerPort] ## Labda WEB adapters use port 8080 by default.
       FunctionUrlConfig:
-        AuthType:  AWS_IAM
+        AuthType: AWS_IAM
     Metadata:
       DockerTag: provided
       DockerContext: ./
       Dockerfile: Dockerfile
-  # CloudFront Distribution with Lambda function URL as the origin with Origin and Behaviors configuration 
+  # AppCustomCertificate:
+  #   Type: AWS::CertificateManager::Certificate
+  #   Properties:
+  #     DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
+  #     ValidationMethod: DNS
+  #     DomainValidationOptions:
+  #       - DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
+  #         HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
+  #     SubjectAlternativeNames:
+  #       - !FindInMap [StagesMap, !Ref Stage, customDomain]
+
+  # CloudFront Distribution with Lambda function URL as the origin with Origin and Behaviors configuration
   # following best practices for a Lambda function URL origin.
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
+    # DependsOn: AppCustomCertificate
     Properties:
       DistributionConfig:
         CacheBehaviors:
@@ -85,14 +102,15 @@ Resources:
             OriginAccessControlId: !Ref BucketFrontOriginAccessControl
             S3OriginConfig:
               OriginAccessIdentity: ""
-          - DomainName: !Select [2, !Split ["/", !GetAtt GothServerUrl.FunctionUrl]] 
+          - DomainName:
+              !Select [2, !Split ["/", !GetAtt GothServerUrl.FunctionUrl]]
             Id: ServerRoutes
             CustomOriginConfig:
               OriginProtocolPolicy: https-only
               OriginSSLProtocols:
                 - TLSv1.2
               OriginKeepaliveTimeout: 60
-            OriginAccessControlId: !Ref ServerCloudFrontOriginAccessControl 
+            OriginAccessControlId: !Ref ServerCloudFrontOriginAccessControl
         Enabled: true
         DefaultCacheBehavior:
           TargetOriginId: ServerRoutes
@@ -111,8 +129,22 @@ Resources:
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
           MinimumProtocolVersion: TLSv1.2_2021
+        #   AcmCertificateArn: !Ref AppCustomCertificate
+        #   SslSupportMethod: sni-only
+        # Aliases:
+        #   - !FindInMap [StagesMap, !Ref Stage, customDomain]
         HttpVersion: http2
         PriceClass: PriceClass_All
+  # CustomDomainRoute53RecordSet:
+  #   DependsOn: CloudFrontDistribution
+  #   Type: AWS::Route53::RecordSet
+  #   Properties:
+  #     HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
+  #     Name: !FindInMap [StagesMap, !Ref Stage, customDomain]
+  #     Type: A
+  #     AliasTarget:
+  #       DNSName: !GetAtt CloudFrontDistribution.DomainName
+  #       HostedZoneId: "Z2FDTNDATAQYW2" # Mocked value for all cloudfront apis besides china (Z3RFFRIM2A3IF5)
 
   # Permission to invoke the Lambda function from the CloudFront Distrinbution
   ServerLambdaInvokePermissionForCloudFront:
@@ -124,12 +156,12 @@ Resources:
       SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
       SourceAccount: !Sub "${AWS::AccountId}"
 
-  # Origin Access Control to associate with the CloudFront Distribution    
+  # Origin Access Control to associate with the CloudFront Distribution
   ServerCloudFrontOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
       OriginAccessControlConfig:
-        Name: !Sub "${AWS::StackName}-oac-for-goth-server" 
+        Name: !Sub "${AWS::StackName}-oac-for-goth-server"
         SigningBehavior: always
         OriginAccessControlOriginType: lambda
         SigningProtocol: sigv4
@@ -137,7 +169,7 @@ Resources:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
       OriginAccessControlConfig:
-        Name:  !Sub "${AWS::StackName}-oac-for-goth-bucket" 
+        Name: !Sub "${AWS::StackName}-oac-for-goth-bucket"
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4
@@ -176,11 +208,11 @@ Resources:
             HeaderBehavior: none
           QueryStringsConfig:
             QueryStringBehavior: none
-# Public Folder Bucket
+  # Public Folder Bucket
   Bucket:
     Type: AWS::S3::Bucket
-    Properties: 
-      BucketName: !FindInMap [ StagesMap, !Ref Stage, BucketName ]
+    Properties:
+      BucketName: !FindInMap [StagesMap, !Ref Stage, BucketName]
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - BucketKeyEnabled: true
@@ -202,7 +234,7 @@ Resources:
         Statement:
           - Sid: AllowCloudFrontServicePrincipalReadOnly
             Action:
-            - 's3:GetObject'
+              - "s3:GetObject"
             Effect: Allow
             Principal:
               Service: cloudfront.amazonaws.com
@@ -211,20 +243,13 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution.Id}"
 
-
 Outputs:
-  # CloudFrontDistributionId:
-  #   Description: "The CloudFront Distribution ID"
-  #   Value: !Ref CloudFrontDistribution
   CloudFrontDomainName:
     Description: "The CloudFront Distribution Domain Name"
     Value: !GetAtt CloudFrontDistribution.DomainName
   GothServerLambdaURL:
     Description: "Lambda function url to access server"
     Value: !GetAtt GothServerUrl.FunctionUrl
-  # GothServerARN:
-  #   Description: "Lambda Function ARN"
-  #   Value: !GetAtt GothServer.Arn
-  # GothServerIamRole:
-  #   Description: "Implicit IAM Role created for Serverfunction"
-  #   Value: !GetAtt GothServerRole.Arn
+  # CloudFrontCustomDomainName:
+  #   Description: "The CloudFront Distribution Domain Name"
+  #   Value: !FindInMap [ StagesMap, !Ref Stage, customDomain ]

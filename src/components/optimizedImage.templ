@@ -16,11 +16,11 @@ package components
     * 
 	*
 	*/
-templ OptimizedImage(isFirstLoad bool,imgName string, imgExtension string) {
+templ OptimizedImage(isFirstLoad bool,imgName string, imgExtension string,alt string) {
         if isFirstLoad {
-            <img class={"sm:w-[300px] sm:h-[300px] w-[200px] :h-[200px] rounded-full animate-pulse my-10"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension} src={"/public/"+imgName+"/blurred."+imgExtension}/>
+            <img alt={alt} class={"w-full h-full"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension+"/"+alt} src={"/public/"+imgName+"/blurred."+imgExtension}/>
         }else{
-            <img class={"sm:w-[300px] sm:h-[300px] w-[200px] :h-[200px] rounded-full animate-pulse my-10"} src={"/public/"+imgName+"/original."+imgExtension}/>
+            <img alt={alt} class={"w-full h-full"} src={"/public/"+imgName+"/original."+imgExtension}/>
         }
       
 }
