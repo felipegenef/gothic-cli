@@ -3,14 +3,13 @@ package pages
 import (
 	"github.com/felipegenef/gothic-cli/src/layouts"
 	"time"
-	)
+)
 
 templ Revalidate(currentTime time.Time) {
-		@layouts.PageLayout(){
-			<div class="flex flex-col justify-center items-center w-screen h-screen">
-				<h1 class="text-4xl mb-5">ISR Feature with GOTH APP</h1>
-				<span class="font-bold">{currentTime.Format(time.RFC3339)}</span>
-			</div>
-		}
-
+	@layouts.PageLayout() {
+		<div class="flex flex-col justify-center items-center w-screen h-screen">
+			<h1 class="text-4xl mb-5 text-white">ISR Feature with GOTH APP</h1>
+			<span class="font-bold text-white">{ currentTime.Format(time.RFC3339) }</span>
+		</div>
+	}
 }
