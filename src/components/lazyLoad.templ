@@ -1,0 +1,19 @@
+package components
+
+/**
+	*                           Image Optimization
+	*
+	* This is how you optimize your SEO with lazy loading Components.
+    *
+	*
+*/
+
+templ LazyLoad(isFirstLoad bool) {
+	if isFirstLoad {
+		<div hx-get="/yourLazyLoadedComponent" hx-trigger="load">
+			<div>Put here your scheleton or first load component for the /yourComponent route</div>
+		</div>
+	} else {
+		<div>Put here what has to be loaded after</div>
+	}
+}

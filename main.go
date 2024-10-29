@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -62,6 +63,9 @@ var apiExample embed.FS
 //go:embed src/components/helloWorld.templ
 var helloWorldExample embed.FS
 
+//go:embed src/components/lazyLoad.templ
+var lazyLoadExample embed.FS
+
 //go:embed src/components/optimizedImage.templ
 var optimizeImageExample embed.FS
 
@@ -100,13 +104,6 @@ tmp_dir = "tmp"
   log = "build-errors.log"
   send_interrupt = false
   stop_on_error = true
-
-[color]
-  app = ""
-  build = "yellow"
-  main = "magenta"
-  runner = "green"
-  watcher = "cyan"
 
 [log]
   time = false
@@ -160,6 +157,7 @@ var apiFiles = map[string]embed.FS{
 var componentFiles = map[string]embed.FS{
 	"src/components/helloWorld.templ":     helloWorldExample,
 	"src/components/optimizedImage.templ": optimizeImageExample,
+	"src/components/lazyLoad.templ":       lazyLoadExample,
 }
 
 var cssFiles = map[string]embed.FS{
@@ -181,10 +179,23 @@ var utilFiles = map[string]embed.FS{
 
 func main() {
 	initCmd := flag.Bool("init", false, "Initialize project files and directories")
+	buildCmd := flag.String("build", "", "Build project (options: page, static-page, isr-page, api-route, isr-api-route, component, isr-component, lazy-load-component)")
+	helpCmd := flag.Bool("help", false, "Display help information")
 	flag.Parse()
 
+	if *helpCmd {
+		displayHelp()
+		return
+	}
+
 	if *initCmd {
-		if err := initializeProject(); err != nil {
+		projectName := promptForProjectName()
+		if projectName == "" {
+			fmt.Println("Project name cannot be empty.")
+			return
+		}
+
+		if err := initializeProject(projectName); err != nil {
 			fmt.Printf("Error initializing the project: %v\n", err)
 		} else {
 			templ := exec.Command("make", "templ")
@@ -193,14 +204,19 @@ func main() {
 			gitinit.Run()
 			fmt.Println("Project initialized successfully!")
 		}
+	} else if *buildCmd != "" {
+		name := promptForBuildName(*buildCmd)
+		if name != "" {
+			handleBuild(*buildCmd, name)
+		}
 	} else {
-		fmt.Println("Use --init to initialize the project.")
+		fmt.Println("Use --init to initialize the project or --build to build a boilerplate example.")
 	}
 
 }
 
 // Function to create directories and files
-func initializeProject() error {
+func initializeProject(projectName string) error {
 	for _, dir := range rootDirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			return err
@@ -289,6 +305,39 @@ func initializeProject() error {
 		return err
 	}
 
+	// Replace project name on all files
+	if err := replaceOnFile("gothic-example", projectName, "samconfig.toml"); err != nil {
+
+		return fmt.Errorf("error replacing project name to file %s: %w", "samconfig.toml", err)
+	}
+
+	if err := replaceOnFile("gothic-example", projectName, "makefile"); err != nil {
+
+		return fmt.Errorf("error replacing project name to file %s: %w", "makefile", err)
+	}
+
+	if err := replaceOnFile("gothic-example", projectName, "template.yaml"); err != nil {
+
+		return fmt.Errorf("error replacing project name to file %s: %w", "template.yaml", err)
+	}
+
+	return nil
+}
+
+func replaceOnFile(originalString string, replaceString string, filePath string) error {
+	fileContent, err := os.ReadFile(filePath)
+
+	if err != nil {
+		return err
+	}
+
+	replacedfile := []byte(strings.ReplaceAll(string(fileContent), originalString, replaceString))
+
+	if err := os.WriteFile(filePath, replacedfile, 0644); err != nil {
+
+		return err
+	}
+
 	return nil
 }
 
@@ -326,4 +375,185 @@ func createFiles(files map[string]embed.FS) error {
 	}
 
 	return nil
+}
+
+func handleBuild(buildType, name string) error {
+	switch buildType {
+	case "page":
+		if err := buildAndReplace(name, indexPage, "src/pages/index.templ", "Index", "src/pages/"+name+".templ"); err != nil {
+			return err
+		}
+
+		originalRouteExample := `Please add this to your api routes to use the component:
+
+			router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				handler.Render(r, w, pages.Index())
+			})`
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		fmt.Println(strings.ReplaceAll(originalRouteExample, "Index", name))
+	case "static-page":
+
+		if err := buildAndReplace(name, indexPage, "src/pages/index.templ", "Index", "src/pages/"+name+".templ"); err != nil {
+			return err
+		}
+
+		originalRouteExample := `Please add this to your api routes to use the component:
+
+			router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				// Max cache age for CloudFront is 31536000 = 1 year
+				w.Header().Set("Cache-Control", "max-age=31536000")
+				handler.Render(r, w, pages.Index())
+			})`
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		fmt.Println(strings.ReplaceAll(originalRouteExample, "Index", name))
+
+	case "isr-page":
+
+		if err := buildAndReplace(name, revalidatePage, "src/pages/revalidate.templ", "Revalidate", "src/pages/"+name+".templ"); err != nil {
+			return err
+		}
+
+		originalRouteExample := `Please add this to your api routes to use the component:
+
+			router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				// Revalidate page every 10 seconds. You can revalidate up to 31536000 (1 year)
+				w.Header().Set("Cache-Control", "max-age=10, stale-while-revalidate=10, stale-if-error=10")
+				handler.Render(r, w, pages.Index())
+			})`
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		fmt.Println(strings.ReplaceAll(originalRouteExample, "Revalidate", name))
+	case "api-route":
+
+		if err := buildAndReplace(name, apiExample, "src/api/helloWorld.go", "HelloWorld", "src/api/"+name+".go"); err != nil {
+			return err
+		}
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		originalRouteExample := `Please add this to your api routes to use the component:
+
+				router.Get("/", api.HelloWorld)`
+
+		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
+
+	case "isr-api-route":
+		if err := buildAndReplace(name, apiExample, "src/api/helloWorld.go", "HelloWorld", "src/api/"+name+".go"); err != nil {
+			return err
+		}
+
+		originalRouteExample := `Please add this to your api routes to use the component:
+
+				router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+					// Revalidate page every 10 seconds. You can revalidate up to 31536000 (1 year)
+					w.Header().Set("Cache-Control", "max-age=10, stale-while-revalidate=10, stale-if-error=10")
+					api.HelloWorld(w,r)
+				})`
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
+	case "component":
+		if err := buildAndReplace(name, helloWorldExample, "src/components/helloWorld.templ", "HelloWorld", "src/components/"+name+".templ"); err != nil {
+			return err
+		}
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		originalRouteExample := `Please add this to your api routes to use the component:
+
+				router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+					handler.Render(r, w, components.HelloWorld())
+				})`
+
+		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
+	case "isr-component":
+		if err := buildAndReplace(name, helloWorldExample, "src/components/helloWorld.templ", "HelloWorld", "src/components/"+name+".templ"); err != nil {
+			return err
+		}
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		originalRouteExample := `Please add this to your api routes to use the component:
+
+				router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+					// Revalidate page every 10 seconds. You can revalidate up to 31536000 (1 year)
+					w.Header().Set("Cache-Control", "max-age=10, stale-while-revalidate=10, stale-if-error=10")
+					handler.Render(r, w, components.HelloWorld())
+				})`
+
+		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
+	case "lazy-load-component":
+		if err := buildAndReplace(name, lazyLoadExample, "src/components/lazyLoad.templ", "LazyLoad", "src/components/"+name+".templ"); err != nil {
+			return err
+		}
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		originalRouteExample := `Please add this to your api routes to use the component:
+
+				router.Get("/yourLazyLoadedComponent", func(w http.ResponseWriter, r *http.Request) {
+					handler.Render(r, w, components.LazyLoad(false))
+				})
+		
+		
+				Also add this to your page to lazy load the component
+				
+				@components.LazyLoad(true)
+	`
+
+		fmt.Println(strings.ReplaceAll(originalRouteExample, "LazyLoad", name))
+	default:
+		fmt.Println("Unknown build type. Use one of: page, static-page, isr-page, api-route, isr-api-route, component, isr-component, lazy-load-component.")
+	}
+
+	return nil
+}
+func buildAndReplace(name string, fileTemplate embed.FS, fileTemplatePath string, stringToReplace string, outputFilePath string) error {
+	data, err := fs.ReadFile(fileTemplate, fileTemplatePath)
+	if err != nil {
+		return err
+	}
+	replacedData := []byte(strings.ReplaceAll(string(data), stringToReplace, name))
+
+	if err := os.WriteFile(outputFilePath, replacedData, 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+func displayHelp() {
+	fmt.Println("Usage:")
+	fmt.Println("  --init                     Initialize project files and directories.")
+	fmt.Println("  --build <type>            Build project with specified type.")
+	fmt.Println("                           Options for <type>:")
+	fmt.Println("                             page           Build a regular page.")
+	fmt.Println("                             static-page    Build a static page.")
+	fmt.Println("                             isr-page       Build an ISR page.")
+	fmt.Println("                             api-route      Build an API route.")
+	fmt.Println("                             isr-api-route  Build an ISR API route.")
+	fmt.Println("  --help                     Display this help information.")
+}
+
+func promptForProjectName() string {
+	var name string
+	fmt.Print("Enter your unique stack name in kebab case (e.g., your-unique-stack-name): ")
+	fmt.Scanln(&name)
+
+	// Validate kebab case
+	if matched, _ := regexp.MatchString(`^[a-z0-9]+(-[a-z0-9]+)*$`, name); !matched {
+		fmt.Println("Invalid name format. Please use kebab case (lowercase letters and numbers only, with dashes).")
+		return ""
+	}
+	return name
+}
+
+func promptForBuildName(buildType string) string {
+	var name string
+	fmt.Printf("Enter the name for the %s (in camel case, e.g., MyPageExample,MyApiRoute,MyComponent etc...): ", buildType)
+	fmt.Scanln(&name)
+
+	// Validate camel case
+	if matched, _ := regexp.MatchString(`^[A-Z][a-zA-Z0-9]*$`, name); !matched {
+		fmt.Println("Invalid name format. Please use camel case (start with uppercase letter, followed by letters and digits).")
+		return ""
+	}
+	return name
 }
