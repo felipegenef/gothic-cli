@@ -193,7 +193,7 @@ router.Get("/revalidateEvery10SecPage", func(w http.ResponseWriter, r *http.Requ
 
 Currently, we have not implemented multi-region edge functions because AWS `@EdgeFunctions` do not support container images or Golang images. Please feel free to submit a pull request when this feature becomes available.
 
-#### Multi-Region infrastructure (Normal Lambda Functions)
+#### Custom Region infrastructure
 
 At present, deploying your functions in regions other than `us-east-1`, while also creating the ACM certificate in `us-east-1` within the same template, is not straightforward. For the Route 53 A record to work and for the CloudFormation CDN to have an alias domain, the ACM certificate must be created in the us-east-1 region. If you want to create your infrastructure in another region, such as `eu-central-1` (Central Europe), you will need to _manually create your ACM certificate in the AWS console_ and _reference it in the template as an ARN_ value (we recommend storing it in Secrets Manager).
 
@@ -405,7 +405,7 @@ This will show your custom domain attached to your CDN on the terminal after dep
 - [x] Fetch environment variables from Parameter Store
 - [x] Multi-Stage Deployments
 - [x] Custom Domain
-- [x] Multi-Region infrastructure (Normal Lambda Functions)
+- [x] Custom Region infrastructure
 - [x] Boilerplate command to create project structure
 - [ ] Boilerplate command to create Page
 - [ ] Boilerplate command to create static Page
