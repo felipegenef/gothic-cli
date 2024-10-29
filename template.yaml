@@ -51,6 +51,13 @@ Mappings:
       # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/prod/domain-hosted-zone}}" # The one from your domain
       HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
 
+
+# This was added for multi region lambda server support. Check out CloudFrontDistribution Origins to see.
+# In case the stack region is different than us-eas-1 we need to build the origin url (Cloudfront bug set it as us-east-1 always)
+Conditions:
+  IsUSEast1: !Equals [ !Ref "AWS::Region", "us-east-1" ]
+
+
 Resources:
   GothServer:
     Type: AWS::Serverless::Function
@@ -97,7 +104,15 @@ Resources:
             CachePolicyId: !Ref PublicAssetsCachingPolicy
 
         Origins:
-          - DomainName: !GetAtt Bucket.DomainName
+          - DomainName: !If
+              - IsUSEast1
+              - !GetAtt Bucket.DomainName
+              - !Join
+                  - ""
+                  - - !FindInMap [StagesMap, !Ref Stage, BucketName]
+                    - ".s3."
+                    - !Ref "AWS::Region"
+                    - ".amazonaws.com"
             Id: publicAssets
             OriginAccessControlId: !Ref BucketFrontOriginAccessControl
             S3OriginConfig:
@@ -142,6 +157,8 @@ Resources:
   #     HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
   #     Name: !FindInMap [StagesMap, !Ref Stage, customDomain]
   #     Type: A
+  #     Region: us-east-1
+  #     SetIdentifier: !Sub "${AWS::StackName}-custom-domain-record"
   #     AliasTarget:
   #       DNSName: !GetAtt CloudFrontDistribution.DomainName
   #       HostedZoneId: "Z2FDTNDATAQYW2" # Mocked value for all cloudfront apis besides china (Z3RFFRIM2A3IF5)

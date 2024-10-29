@@ -45,7 +45,13 @@ gothic-cli --init
 make hot-reload
 ```
 
-7. deploy your server
+7. change "gothic-example" name for your unique (s3 names need to be unique) desired stack name on:
+
+- `makefile`,
+- `samconfig.toml`
+- `template.yaml`
+
+8. deploy your server
 
 ```bash
 make deploy
@@ -183,9 +189,51 @@ router.Get("/revalidateEvery10SecPage", func(w http.ResponseWriter, r *http.Requ
 })
 ```
 
-### Multi-Region (Edge) Functions
+### Multi-Region (Edge Functions)
 
-Currently, we have not implemented multi-region functions, as AWS Edge Functions do not support container images or Golang images. Please feel free to submit a pull request when this feature becomes available.
+Currently, we have not implemented multi-region edge functions because AWS `@EdgeFunctions` do not support container images or Golang images. Please feel free to submit a pull request when this feature becomes available.
+
+#### Multi-Region infrastructure (Normal Lambda Functions)
+
+At present, deploying your functions in regions other than `us-east-1`, while also creating the ACM certificate in `us-east-1` within the same template, is not straightforward. For the Route 53 A record to work and for the CloudFormation CDN to have an alias domain, the ACM certificate must be created in the us-east-1 region. If you want to create your infrastructure in another region, such as `eu-central-1` (Central Europe), you will need to _manually create your ACM certificate in the AWS console_ and _reference it in the template as an ARN_ value (we recommend storing it in Secrets Manager).
+
+Although this limitation may not be an issue for most use-cases since you can optimize your websites with CDN caching for pages and components, some scenarios may require the infrastructure to be deployed in a specific region. Here’s an example of how to do it. First, you change your region in your `samconfig.toml`, then create your certificate for your domain in the `us-east-1` region and validate it in your Route 53 hosted zone. For last, add your ACM certificate ARN to SSM and include this in your `template.yaml`.
+
+##### Change your region on `samconfig.toml`
+
+_example_
+
+```toml
+region = "eu-central-1"
+```
+
+##### Add SSM certificate arn from us-east-1 `template.yaml`
+
+_example_
+
+```yaml
+ViewerCertificate:
+  MinimumProtocolVersion: TLSv1.2_2021
+  AcmCertificateArn: !FindInMap [StagesMap, !Ref Stage, certificateArn] # this certificte has to be in us-east-1
+  SslSupportMethod: sni-only
+Aliases:
+  - !FindInMap [StagesMap, !Ref Stage, customDomain]
+```
+
+##### Add variables for each env
+
+```yaml
+Mappings:
+  StagesMap:
+    default:
+      certificateArn: "{{resolve:ssm:/GOTHIC-STACK/default/certificate-arn}}"
+    dev:
+      certificateArn: "{{resolve:ssm:/GOTHIC-STACK/dev/certificate-arn}}"
+    staging:
+      certificateArn: "{{resolve:ssm:/GOTHIC-STACK/staging/certificate-arn}}"
+    prod:
+      certificateArn: "{{resolve:ssm:/GOTHIC-STACK/prod/certificate-arn}}"
+```
 
 ### Fetch environment variables from Parameter Store
 
@@ -357,6 +405,7 @@ This will show your custom domain attached to your CDN on the terminal after dep
 - [x] Fetch environment variables from Parameter Store
 - [x] Multi-Stage Deployments
 - [x] Custom Domain
+- [x] Multi-Region infrastructure (Normal Lambda Functions)
 - [x] Boilerplate command to create project structure
 - [ ] Boilerplate command to create Page
 - [ ] Boilerplate command to create static Page
@@ -364,5 +413,5 @@ This will show your custom domain attached to your CDN on the terminal after dep
 - [ ] Boilerplate command to create api route
 - [ ] Boilerplate command to create ISR cache api route
 - [ ] Delete or set a limit for old ECR images
-- [ ] Multi-Region (Edge)
+- [ ] Multi-Region (Edge Functions)
 - [ ] Website Docs
