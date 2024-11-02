@@ -100,6 +100,12 @@ Now that we have all set, just add a new key `deploy` to your `gothic-config.jso
 make deploy STAGE=dev
 ```
 
+##### Command to delete
+
+```bash
+make delete STAGE=dev
+```
+
 This will create the infrastructure we showed above. With CloudFront as a CDN, a Lambda Container as the server and an S3 bucket for the images on your public folder! A fully managed and robust application !
 
 ## Infrastructure
