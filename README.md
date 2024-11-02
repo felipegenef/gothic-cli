@@ -8,7 +8,7 @@ Gothic-cli is designed to help you create modern applications with Golang in a f
 
 This tool draws inspiration from Next.js features, particularly its ability to leverage serverless and edge environments to enhance user experience (UX) while also providing a positive developer experience (DX).
 
-Gothic-cli generates boilerplates with some libraries pre-installed to assist you, but this does not limit your options. Feel free to choose the infrastructure, cloud services, caching solutions, and libraries that best suit your needs!
+Gothic-cli generates boilerplates with some libraries pre-installed to assist you, but this does not limit your options. Feel free to choose the infrastructure, cloud services, caching solutions, and libraries that best suit your needs! After all, in the end it is just a Go app binary that can be deployed anywhere!
 
 The currently selected libraries and default tools include:
 
@@ -18,110 +18,69 @@ The currently selected libraries and default tools include:
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) to work alongside AWS SAM
 - [CHI](https://go-chi.io) as the HTTP server framework
 - [AIR](https://github.com/air-verse/air) for hot reloading
+- [ShortId](github.com/teris-io/shortid) for stack bucket and lambda unique name creation
 - [TailwindCSS](https://tailwindcss.com/) for styling
+- [Chai Webp](github.com/chai2010/webp) for the image optimization tool on webp images
+- [Nfnt resize](github.com/nfnt/resize) for the image optimization tool
 - [HTMX](https://htmx.org/) for handling HTML events and rendering the DOM
 - [Templ](https://templ.guide/) for creating HTML page templates
 
-## Installing
+## Getting Started
 
-1. Download [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
-2. Download [AWS SAM](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
-3. Download [Golang](https://go.dev/doc/install).
-4. Install the CLI using the following command:
+To use tool it is as simple as installing and initialize your development.
+
+### Install the latest version:
 
 ```bash
 go install github.com/felipegenef/gothic-cli@latest
 ```
 
-5. Create your template
+### Init the project in a folder that you wish to start
 
 ```bash
 gothic-cli --init
 ```
 
-6. Run your server locally
+### Start the application locally
 
 ```bash
 make dev
 ```
 
-7. change "gothic-example" name for your unique (s3 names need to be unique) desired stack name on:
+## SEO Optimized Image Loading (Next Image Component)
 
-- `makefile`,
-- `samconfig.toml`
-- `template.yaml`
+This feature optimizes SEO by implementing lazy loading for images, similar to the Image Component in Next.js. Initially, a lower-resolution version of the image is displayed. Once the page has loaded, the original image is fetched, giving the user the impression that the page loaded faster. The image will appear blurred at first, then transition smoothly to full resolution.
 
-8. deploy your server
+### Add Image and Run Optimization Command
+
+To use this feature, you will need two versions of your image: one with a lower resolution and another at the original resolution. Place your image in the _optimize_ folder and run (This command also run automatically on `make dev`):
 
 ```bash
-make deploy
+make optimize-images
 ```
 
-## Infrastructure
-
-<img alt="background doc" src="Doc/Assets/Infrastructure.jpeg" width="100%"/>
-
-To ensure a smooth developer experience, we have designed the default infrastructure to be 100% serverless. This allows you to focus on web app development and business logic without worrying about infrastructure and scalability.
-
-### CDN
-
-We use AWS CloudFront for the CDN.
-
-- All assets added to the `public` folder will be uploaded to an S3 bucket and linked to the CDN.
-- All optimized images should be placed in the `optimize` folder. These images will be resized and stored in the S3 bucket as a separate folder. (For example, `optimized/logo.png` will generate `public/logo/blurred.png` and `public/logo/original.png`).
-
-Supported image formats include:
+_Supported image formats include_:
 
 - jpg
 - jpeg
 - webp
 - png
 
-### Server
+This command executes the script located in _.gothicCli/imgOptimization/main.go_, which creates a folder in the public directory containing both the blurred and original images. By default, the blurred image is generated at 20% of the original resolution. You can adjust this by changing the variable in `gothic-config.json` file
 
-The server will be deployed as a Lambda Container, allowing it to scale rapidly according to your needs. It utilizes [Lambda Web Adapters](https://github.com/awslabs/aws-lambda-web-adapter) to handle incoming requests. This Lambda URL is connected to the same CloudFront CDN mentioned earlier.
-
-### Caching
-
-We also use [AWS CloudFront](https://aws.amazon.com/cloudfront/) for page caching. To cache your pages, add the "Cache-Control" header with your desired caching behavior. CloudFront will handle the caching of your pages and components at its edge locations.
-
-### Infrastructure as Code (IaC)
-
-With all recommended infrastructure hosted in AWS as serverless services, we will use AWS SAM to create and deploy our infrastructure.
-
-## Features
-
-### Hot Reload
-
-To enable hot reloading of your application and see changes made to your templates and styling, run:
-
-```bash
-make hot-reload
+```json
+{
+  "projectName": "gothic-example",
+  "goModuleName": "github.com/felipegenef/gothic-cli",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  }
+}
 ```
 
-This command will run AIR and Templ proxy simultaneously, allowing you to hot reload your application. For customization options, please refer to the _.air.toml_ file and the _CLI/HotReload/main.go_ file.
+Now that we have our optimized images on the `public` folder, we have to create the component template and route and add it to a page for the lazy loading effect similar to Next.js Image component.
 
-### SEO Optimized Image Loading
-
-This feature optimizes SEO by implementing lazy loading for images, similar to the Image Component in Next.js. Initially, a lower-resolution version of the image is displayed. Once the page has loaded, the original image is fetched, giving the user the impression that the page loaded faster. The image will appear blurred at first, then transition smoothly to full resolution.
-
-#### Add Image and Run Optimization Command
-
-To use this feature, you will need two versions of your image: one with a lower resolution and another at the original resolution. Place your image in the _optimize_ folder and run:
-
-```bash
-make optimize-images
-```
-
-This command executes the script located in _CLI/imgOptimization/main.go_, which creates a folder in the public directory containing both the blurred and original images. By default, the blurred image is generated at 20% of the original resolution. You can adjust this by changing the variable in the script:
-
-```go
-// Calculate new dimensions for blurred image (20% of original)
-newWidth := originalWidth * 20 / 100
-newHeight := originalHeight * 20 / 100
-```
-
-#### Create the Image Component
+### Create the Image Component Template
 
 _Example_
 
@@ -136,7 +95,7 @@ templ OptimizedImage(isFirstLoad bool,imgName string, imgExtension string,alt st
 }
 ```
 
-#### Create the Page and Add the Image Component
+### Add template component to a page
 
 _Example_
 
@@ -151,7 +110,7 @@ templ Index() {
 }
 ```
 
-#### Create the Route to Render the Original Resolution Image
+### Create the Route to Render the component on the lazy load
 
 _Example_
 
@@ -163,6 +122,203 @@ _Example_
 		handler.Render(r, w, components.OptimizedImage(false, imgName, imgExtension, imgAlt))
 	})
 ```
+
+## Simple to Deploy, Robust Infrastructure!
+
+To ensure a smooth developer experience, we have designed the default infrastructure to be 100% serverless. This allows you to focus on web app development and business logic without worrying about infrastructure and scalability.
+
+<img alt="background doc" src="Doc/Assets/Infrastructure.jpeg" width="100%"/>
+
+### Deploy your Application to Test!
+
+To make this automagically deployment with robust infrastructure work , you will need to create an AWS account and install some tools for the deployment to work:
+
+#### Installing Tools for Deploy
+
+1. Download [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+2. Download [AWS SAM](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
+3. Login with AWS CLI and add IAM credential to your CLI to work.
+
+#### Deploy your first Gothic App
+
+Now that we have all set, just add a new key `deploy` to your `gothic-config.json`. Dont worry for the values for now, leave them as blank. Just run:
+
+##### Dev key for config
+
+```json
+{
+  "projectName": "gothic-example",
+  "goModuleName": "github.com/felipegenef/gothic-cli",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  },
+  "deploy": {
+    "serverMemory": 128,
+    "serverTimeout": 30,
+    "region": "us-east-1",
+    "customDomain": false,
+    "profile": "default",
+    "stages": {
+      "dev": {
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {}
+      }
+    }
+  }
+}
+```
+
+##### Command to deploy
+
+```bash
+make deploy STAGE=dev
+```
+
+This will create the infrastructure we showed above. With CloudFront as a CDN, a lambda container as the server and an S3 bucket for the images on your public folder! A fully managed and robust application !
+
+## Secure your Environment Variables
+
+You can get variables directly from AWS Parameter Store from the template using the _resolve:ssm_ as shown below. We recommend storing variables for each Stage. Please read more of how to do it in the next topic `Multi-Stage Deployments`
+
+```json
+{
+  "projectName": "gothic-example",
+  "goModuleName": "github.com/felipegenef/gothic-cli",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  },
+  "deploy": {
+    "serverMemory": 128,
+    "serverTimeout": 30,
+    "region": "us-east-1",
+    "customDomain": false,
+    "profile": "default",
+    "stages": {
+      "dev": {
+        "hostedZoneId": "{{resolve:ssm:/gothic-cli/dev/hostedZoneId}}",
+        "customDomain": "dev.mycustomDomain.com",
+        "certificateArn": "{{resolve:ssm:/gothic-cli/dev/certificateArn}}",
+        "env": {}
+      },
+      "qa": {
+        "hostedZoneId": "{{resolve:ssm:/gothic-cli/qa/hostedZoneId}}",
+        "customDomain": "qa.mycustomDomain.com",
+        "certificateArn": "{{resolve:ssm:/gothic-cli/qa/certificateArn}}",
+        "env": {}
+      },
+      "prod": {
+        "hostedZoneId": "{{resolve:ssm:/gothic-cli/prod/hostedZoneId}}",
+        "customDomain": "mycustomDomain.com",
+        "certificateArn": "{{resolve:ssm:/gothic-cli/prod/certificateArn}}",
+        "env": {}
+      }
+    }
+  }
+}
+```
+
+### Multi-Stage Deployments
+
+Add different stages and different variables for each stage on your `gothic-config.json`. After that you can deploy the same app In different stages with a simple command:
+
+```bash
+make deploy STAGE=dev
+```
+
+## Deploy your App with your Custom Domain from AWS
+
+Deploy your app with your custom domain is easy! You will just need your hostedZoneId from your AWS Route 53 hostedZone and the domain or subdomian of your choice. Once you have those two values add them to your `gothic-config.json` as shown below (we recommend storing your hosted zone id in Parameter Store as shown in the example as it is sensitive information):
+
+```json
+{
+  "projectName": "gothic-example",
+  "goModuleName": "github.com/felipegenef/gothic-cli",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  },
+  "deploy": {
+    "serverMemory": 128,
+    "serverTimeout": 30,
+    "region": "us-east-1",
+    "customDomain": false,
+    "profile": "default",
+    "stages": {
+      "dev": {
+        "hostedZoneId": "{{resolve:ssm:/gothic-cli/dev/hostedZoneId}}",
+        "customDomain": "dev.mycustomDomain.com",
+        "certificateArn": null,
+        "env": {}
+      }
+    }
+  }
+}
+```
+
+### Important Note!
+
+If your app is in a different region than us-east-1 please add an AWS ACM us-east-1 arn to `certificateArn` on your `gothic-config.json`. For more information, please go to our `Custom Region infrastructure` session.
+
+### Then deploy your app with custom domain
+
+```bash
+make deploy STAGE=dev
+
+```
+
+## Multiple AWS Account Profile Deployments
+
+Sometimes you have more than one AWS account profile on your AWS CLI, to use a specific credential profile add the profile name to your
+`gothic-config.json` as shown below:
+
+```json
+{
+  "projectName": "gothic-example",
+  "goModuleName": "github.com/felipegenef/gothic-cli",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  },
+  "deploy": {
+    "serverMemory": 128,
+    "serverTimeout": 30,
+    "region": "us-east-1",
+    "customDomain": false,
+    "profile": "mycustomProfileName",
+    "stages": {
+      "dev": {
+        "hostedZoneId": "{{resolve:ssm:/gothic-cli/dev/hostedZoneId}}",
+        "customDomain": "dev.mycustomDomain.com",
+        "certificateArn": null,
+        "env": {}
+      }
+    }
+  }
+}
+```
+
+## Infrastructure
+
+### CDN
+
+We use AWS CloudFront for the CDN.
+
+- All assets added to the `public` folder will be uploaded to an S3 bucket and linked to the CDN.
+- All optimized images should be placed in the `optimize` folder. These images will be resized and stored in the S3 bucket as a separate folder. (For example, `optimized/logo.png` will generate `public/logo/blurred.png` and `public/logo/original.png`).
+
+### Server
+
+The server will be deployed as a Lambda Container, allowing it to scale rapidly according to your needs. It utilizes [Lambda Web Adapters](https://github.com/awslabs/aws-lambda-web-adapter) to handle incoming requests. This Lambda URL is connected to the same CloudFront CDN mentioned earlier.
+
+### Caching
+
+We also use [AWS CloudFront](https://aws.amazon.com/cloudfront/) for page caching. To cache your pages, add the "Cache-Control" header with your desired caching behavior. CloudFront will handle the caching of your pages and components at its edge locations.
+
+### Infrastructure as Code (IaC)
+
+With all recommended infrastructure hosted in AWS as serverless services, we will use AWS SAM to create and deploy our infrastructure.
+
+## Other Features
 
 ### Public Static Pages CDN Caching
 
@@ -193,207 +349,43 @@ router.Get("/revalidateEvery10SecPage", func(w http.ResponseWriter, r *http.Requ
 
 Currently, we have not implemented multi-region edge functions because AWS `@EdgeFunctions` do not support container images or Golang images. Please feel free to submit a pull request when this feature becomes available.
 
-#### Custom Region infrastructure
+### Custom Region infrastructure
 
-At present, deploying your functions in regions other than `us-east-1`, while also creating the ACM certificate in `us-east-1` within the same template, is not straightforward. For the Route 53 A record to work and for the CloudFormation CDN to have an alias domain, the ACM certificate must be created in the us-east-1 region. If you want to create your infrastructure in another region, such as `eu-central-1` (Central Europe), you will need to _manually create your ACM certificate in the AWS console_ and _reference it in the template as an ARN_ value (we recommend storing it in Secrets Manager).
+At present, deploying your functions in regions other than `us-east-1`, while also creating the ACM certificate in `us-east-1` within the same template, is not straightforward. For the Route 53 A record to work and for the CloudFormation CDN to have an alias domain, the ACM certificate must be created in the us-east-1 region. If you want to create your infrastructure in another region, such as `eu-central-1` (Central Europe), you will need to _manually create your ACM certificate in the AWS console_ and _reference it in `gothic-config.json` as an ARN_ value (we recommend storing it in Parameter Store).
 
-Although this limitation may not be an issue for most use-cases since you can optimize your websites with CDN caching for pages and components, some scenarios may require the infrastructure to be deployed in a specific region. Here’s an example of how to do it. First, you change your region in your `samconfig.toml`, then create your certificate for your domain in the `us-east-1` region and validate it in your Route 53 hosted zone. For last, add your ACM certificate ARN to SSM and include this in your `template.yaml`.
+Although this limitation may not be an issue for most use-cases since you can optimize your websites with CDN caching for pages and components, some scenarios may require the infrastructure to be deployed in a specific region. Here’s an example of how to do it. First, you change your region in your `gothic-config.json`, then create your certificate for your domain in the `us-east-1` region and validate it in your Route 53 hosted zone. For last, add your ACM certificate ARN to SSM and include this in your `gothic-config.json`.
 
-##### Change your region on `samconfig.toml`
+#### Change your region on `gothic-config.json`
 
-_example_
-
-```toml
-region = "eu-central-1"
+```json
+{
+  "projectName": "gothic-example",
+  "goModuleName": "github.com/felipegenef/gothic-cli",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  },
+  "deploy": {
+    "serverMemory": 128,
+    "serverTimeout": 30,
+    "region": "eu-central-1",
+    "customDomain": false,
+    "profile": "default",
+    "stages": {
+      "dev": {
+        "hostedZoneId": "{{resolve:ssm:/gothic-cli/dev/hostedZoneId}}",
+        "customDomain": "dev.mycustomDomain.com",
+        "certificateArn": "{{resolve:ssm:/gothic-cli/dev/certificateArn}}",
+        "env": {}
+      }
+    }
+  }
+}
 ```
 
-##### Add SSM certificate arn from us-east-1 `template.yaml`
-
-_example_
-
-```yaml
-ViewerCertificate:
-  MinimumProtocolVersion: TLSv1.2_2021
-  AcmCertificateArn: !FindInMap [StagesMap, !Ref Stage, certificateArn] # this certificte has to be in us-east-1
-  SslSupportMethod: sni-only
-Aliases:
-  - !FindInMap [StagesMap, !Ref Stage, customDomain]
-```
-
-##### Add variables for each env
-
-```yaml
-Mappings:
-  StagesMap:
-    default:
-      certificateArn: "{{resolve:ssm:/GOTHIC-STACK/default/certificate-arn}}"
-    dev:
-      certificateArn: "{{resolve:ssm:/GOTHIC-STACK/dev/certificate-arn}}"
-    staging:
-      certificateArn: "{{resolve:ssm:/GOTHIC-STACK/staging/certificate-arn}}"
-    prod:
-      certificateArn: "{{resolve:ssm:/GOTHIC-STACK/prod/certificate-arn}}"
-```
-
-### Fetch environment variables from Parameter Store
-
-_example_
-
-- Add _/GOTHIC-STACK/dev/bucket-name_ and _/GOTHIC-STACK/dev/lambda-name_
-- Deploy your application in DEV stage.
-
-You can add variables directly to the template using the _resolve:ssm_ as shown below. We recommend storing variables for each Stage. Please read more of how to do it in the next topic `Multi-Stage Deployments`
-
-### Multi-Stage Deployments
-
-Deploy the same app In different stages with a simple command:
+#### deploy your application
 
 ```bash
-make deploy Stage=dev
-```
-
-Other Stage options:
-
-- default
-- dev
-- staging
-- prod
-
-To add more options please edit your _template.yaml_
-
-```yaml
-Parameters:
-  Stage:
-    AllowedValues:
-      - default
-      - dev
-      - staging
-      - prod
-    Description: "Pass your Stage to get parameters from SSM"
-    Type: String
-    Default: default
-
-Mappings:
-  StagesMap:
-    default:
-      BucketName: "gothic-example-public-bucket-default"
-      LambdaName: "gothic-example-lambda-app-default"
-    dev:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
-    staging:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
-    prod:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
-```
-
-### Custom Domain
-
-To add your custom domain for each stage please follow the steps below:
-
-#### Ucomment and fulfill your domain information on `template.yaml`
-
-We recommend using SSM for storing your hostedZoneId once it is a sensitive information.
-
-```yaml
-Mappings:
-  StagesMap:
-    default:
-      BucketName: "gothic-example-public-bucket-default"
-      LambdaName: "gothic-example-lambda-app-default"
-      # customDomain: "default.yourDomain.com"
-      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/default/domain-hosted-zone}}" # The one from your domain
-      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-    dev:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
-      # customDomain: "dev.yourDomain.com"
-      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/dev/domain-hosted-zone}}" # The one from your domain
-      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-    staging:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
-      # customDomain: "staging.yourDomain.com"
-      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/staging/domain-hosted-zone}}" # The one from your domain
-      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-    prod:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
-      # customDomain: "yourDomain.com"
-      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/prod/domain-hosted-zone}}" # The one from your domain
-      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-```
-
-#### Ucomment AppCustomCertificate `template.yaml`
-
-This will create a privite ACM certificate for your domain or subdomain during build time.
-
-```yaml
-# AppCustomCertificate:
-#   Type: AWS::CertificateManager::Certificate
-#   Properties:
-#     DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
-#     ValidationMethod: DNS
-#     DomainValidationOptions:
-#       - DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
-#         HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
-#     SubjectAlternativeNames:
-#       - !FindInMap [StagesMap, !Ref Stage, customDomain]
-```
-
-#### Ucomment DependsOn on CloudFrontDistribution resource on `template.yaml`
-
-This will make sure the CDN will only be created after the certificate is emitted and validated.
-
-```yaml
-CloudFrontDistribution:
-  Type: AWS::CloudFront::Distribution
-  # DependsOn: AppCustomCertificate
-```
-
-#### 1) Ucomment AcmCertificateArn, SslSupportMethod and Aliases on ViewerCertificate resource on `template.yaml`
-
-##### 2) Comment or remove CloudFrontDefaultCertificate: true from the same resource
-
-This will add an alias to your CDN redirecting any traffic from your custom domain to the CDN
-
-```yaml
-ViewerCertificate:
-  CloudFrontDefaultCertificate: true
-  MinimumProtocolVersion: TLSv1.2_2021
-#   AcmCertificateArn: !Ref AppCustomCertificate
-#   SslSupportMethod: sni-only
-# Aliases:
-#   - !FindInMap [StagesMap, !Ref Stage, customDomain]
-```
-
-#### Ucomment CustomDomainRoute53RecordSet resource on `template.yaml`
-
-This will add a route53 record that will redirect requests from your route53 domain to the CDN
-
-```yaml
-# CustomDomainRoute53RecordSet:
-#   DependsOn: CloudFrontDistribution
-#   Type: AWS::Route53::RecordSet
-#   Properties:
-#     HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
-#     Name: !FindInMap [StagesMap, !Ref Stage, customDomain]
-#     Type: A
-#     AliasTarget:
-#       DNSName: !GetAtt CloudFrontDistribution.DomainName
-#       HostedZoneId: "Z2FDTNDATAQYW2" # Mocked value for all cloudfront apis besides china (Z3RFFRIM2A3IF5)
-```
-
-#### Ucomment CloudFrontCustomDomainName output on `template.yaml`
-
-This will show your custom domain attached to your CDN on the terminal after deployment
-
-```yaml
-# CloudFrontCustomDomainName:
-#   Description: "The CloudFront Distribution Domain Name"
-#   Value: !FindInMap [ StagesMap, !Ref Stage, customDomain ]
+make deploy STAGE=dev
 ```
 
 ## TODOs
@@ -409,7 +401,6 @@ This will show your custom domain attached to your CDN on the terminal after dep
 - [x] CLI creating boilerplates for basic component, pages and api routes
 - [x] Delete or set a limit for old ECR images
 - [x] Config File
-- [ ] Documenting deploy config file
 - [x] Config create SAM templates based on json and deploy
 - [ ] Multi-Region (Edge Functions)
 - [ ] Website Docs
