@@ -17,7 +17,7 @@ confirm_changeset = false
 resolve_s3 = true
 resolve_image_repos = true
 s3_prefix = "gothic-example"
-region = "us-east-1"
+region = "us-east-2"
 disable_rollback = true
 
 [default.package.parameters]

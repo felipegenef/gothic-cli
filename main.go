@@ -27,7 +27,7 @@ var mainServerFile embed.FS
 //go:embed makefile
 var makeFile embed.FS
 
-//go:embed samconfig.toml
+//go:embed .gothicCli/buildSamTemplate/samconfig.toml
 var samConfigTom embed.FS
 
 //go:embed tailwind.config.js
@@ -36,17 +36,29 @@ var tailwindConfig embed.FS
 //go:embed tailwindcss
 var tailwindCSS embed.FS
 
-//go:embed template.yaml
-var templateYaml embed.FS
+//go:embed .gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml
+var templateCustomDomainWithArnYaml embed.FS
+
+//go:embed .gothicCli/buildSamTemplate/templates/template-custom-domain.yaml
+var templateCustomDomainYaml embed.FS
+
+//go:embed .gothicCli/buildSamTemplate/templates/template-default.yaml
+var templateDefaultYaml embed.FS
+
+//go:embed .gothicCli/buildSamTemplate/main.go
+var buildSamTemplateScript embed.FS
 
 //go:embed README.md
 var readme embed.FS
 
-//go:embed CLI/HotReload/main.go
+//go:embed .gothicCli/HotReload/main.go
 var hotReloadScript embed.FS
 
-//go:embed CLI/imgOptimization/main.go
+//go:embed .gothicCli/imgOptimization/main.go
 var imgOptimizationScript embed.FS
+
+//go:embed .gothicCli/shared.go
+var sharedUtils embed.FS
 
 //go:embed public/imageExample/blurred.jpeg
 var imgOptimizationBlurredImg embed.FS
@@ -83,6 +95,9 @@ var revalidatePage embed.FS
 
 //go:embed src/utils/handler.go
 var utils embed.FS
+
+//go:embed gothic-config.json
+var goticConfig embed.FS
 
 var airToml string = `root = "."
 tmp_dir = "tmp"
@@ -123,14 +138,20 @@ tmp
 optimize/*
 public/styles.css`
 
-var rootDirs = []string{"public", "CLI", "src", "optimize"}
-var cliDirs = []string{"CLI/HotReload", "CLI/imgOptimization"}
+var rootDirs = []string{"public", ".gothicCli", "src", "optimize"}
+var cliDirs = []string{".gothicCli/HotReload", ".gothicCli/imgOptimization", ".gothicCli/buildSamTemplate", ".gothicCli/buildSamTemplate/templates"}
 var srcDirs = []string{"src/api", "src/components", "src/css", "src/layouts", "src/pages", "src/utils"}
 var publicDirs = []string{"public/imageExample"}
 
 var cliFiles = map[string]embed.FS{
-	"CLI/HotReload/main.go":       hotReloadScript,
-	"CLI/imgOptimization/main.go": imgOptimizationScript,
+	".gothicCli/HotReload/main.go":       hotReloadScript,
+	".gothicCli/imgOptimization/main.go": imgOptimizationScript,
+	".gothicCli/shared.go":               sharedUtils,
+	".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml": templateCustomDomainWithArnYaml,
+	".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml":          templateCustomDomainYaml,
+	".gothicCli/buildSamTemplate/templates/template-default.yaml":                templateDefaultYaml,
+	".gothicCli/buildSamTemplate/samconfig.toml":                                 samConfigTom,
+	".gothicCli/buildSamTemplate/main.go":                                        buildSamTemplateScript,
 }
 
 var publicFolderFiles = map[string]embed.FS{
@@ -139,15 +160,16 @@ var publicFolderFiles = map[string]embed.FS{
 	"public/favicon.ico":                favicon,
 }
 
-var srcFiles = map[string]embed.FS{
-	"Dockerfile":         dockerFile,
-	"go.mod":             goMod,
-	"go.sum":             goSum,
-	"makefile":           makeFile,
-	"samconfig.toml":     samConfigTom,
+var rootFiles = map[string]embed.FS{
+	"Dockerfile": dockerFile,
+	"go.mod":     goMod,
+	"go.sum":     goSum,
+	"makefile":   makeFile,
+
 	"tailwind.config.js": tailwindConfig,
-	"template.yaml":      templateYaml,
+
 	"README.md":          readme,
+	"gothic-config.json": goticConfig,
 }
 
 var apiFiles = map[string]embed.FS{
@@ -198,6 +220,7 @@ func main() {
 		if err := initializeProject(projectName); err != nil {
 			fmt.Printf("Error initializing the project: %v\n", err)
 		} else {
+			installRequiredLibs()
 			templ := exec.Command("make", "templ")
 			templ.Run()
 			gitinit := exec.Command("git", "init")
@@ -213,6 +236,17 @@ func main() {
 		fmt.Println("Use --init to initialize the project or --build to build a boilerplate example.")
 	}
 
+}
+func installRequiredLibs() {
+	fmt.Println("Installing dependencies...")
+	templInstall := exec.Command("go", "install", "github.com/a-h/templ/cmd/templ@latest")
+	templInstall.Stdin = os.Stdin
+	templInstall.Stderr = os.Stderr
+	templInstall.Run()
+	airInstall := exec.Command("go", "install", "github.com/air-verse/air@latest")
+	airInstall.Stdin = os.Stdin
+	airInstall.Stderr = os.Stderr
+	airInstall.Run()
 }
 
 // Function to create directories and files
@@ -257,6 +291,7 @@ func initializeProject(projectName string) error {
 	go func() {
 		os.WriteFile(".gitignore", []byte(gitIgnore), 0644)
 	}()
+
 	// Create and replace package on serverfile
 	mainServerData, _ := fs.ReadFile(mainServerFile, "server/server.go")
 	// Replace "package server" with "package main"
@@ -283,7 +318,7 @@ func initializeProject(projectName string) error {
 	if err := createFiles(publicFolderFiles); err != nil {
 		return err
 	}
-	if err := createFiles(srcFiles); err != nil {
+	if err := createFiles(rootFiles); err != nil {
 		return err
 	}
 	if err := createFiles(apiFiles); err != nil {
@@ -306,19 +341,47 @@ func initializeProject(projectName string) error {
 	}
 
 	// Replace project name on all files
-	if err := replaceOnFile("gothic-example", projectName, "samconfig.toml"); err != nil {
-
-		return fmt.Errorf("error replacing project name to file %s: %w", "samconfig.toml", err)
-	}
 
 	if err := replaceOnFile("gothic-example", projectName, "makefile"); err != nil {
 
 		return fmt.Errorf("error replacing project name to file %s: %w", "makefile", err)
 	}
 
-	if err := replaceOnFile("gothic-example", projectName, "template.yaml"); err != nil {
+	// change go module from  github.com/felipegenef/gothic-cli
 
-		return fmt.Errorf("error replacing project name to file %s: %w", "template.yaml", err)
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "main.go"); err != nil {
+
+		return fmt.Errorf("error replacing go module name to file %s: %w", "main.go", err)
+	}
+
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "go.mod"); err != nil {
+
+		return fmt.Errorf("error replacing go module name to file %s: %w", "go.mod", err)
+	}
+
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "src/pages/index.templ"); err != nil {
+
+		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/index.templ", err)
+	}
+
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "src/pages/revalidate.templ"); err != nil {
+
+		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/revalidate.templ", err)
+	}
+
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/imgOptimization/main.go"); err != nil {
+
+		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/revalidate.templ", err)
+	}
+
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/buildSamTemplate/main.go"); err != nil {
+
+		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/buildSamTemplate/main.go", err)
+	}
+
+	if err := replaceOnFile("gothic-example", projectName, "gothic-config.json"); err != nil {
+
+		return fmt.Errorf("error replacing project-name name to file %s: %w", "gothic-config.json", err)
 	}
 
 	return nil

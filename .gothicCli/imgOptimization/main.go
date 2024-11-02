@@ -1,20 +1,38 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
+	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/chai2010/webp"
+	gothicCliShared "github.com/felipegenef/gothic-cli/.gothicCli"
 	"github.com/nfnt/resize"
 )
 
 func main() {
 	inputDir := "./optimize"
 	outputDir := "./public"
+	file, err := os.Open("gothic-config.json")
+	if err != nil {
+		log.Fatalf("Error opening file: %v", err)
+	}
+	defer file.Close()
+
+	// Cria uma variável para armazenar a configuração
+	var config gothicCliShared.Config
+
+	// Decodifica o JSON do arquivo
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&config)
+	if err != nil {
+		log.Fatalf("Error decoding JSON: %v", err)
+	}
 
 	// Create the output directory if it doesn't exist
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
@@ -71,8 +89,14 @@ func main() {
 			originalHeight := uint(img.Bounds().Dy())
 
 			// Calculate new dimensions for blurred image (20% of original)
-			newWidth := originalWidth * 20 / 100
-			newHeight := originalHeight * 20 / 100
+			// Check if Deploy section exists and get lowResolutionRate
+			lowResolutionRate := 20 // default value
+			if config.OptimizeImages.LowResolutionRate > 0 {
+				lowResolutionRate = config.OptimizeImages.LowResolutionRate
+			}
+
+			newWidth := originalWidth * uint(lowResolutionRate) / 100
+			newHeight := originalHeight * uint(lowResolutionRate) / 100
 
 			// Save the original image
 			originalPath := filepath.Join(imageDir, "original"+ext)
@@ -119,7 +143,10 @@ func main() {
 					fmt.Printf("Error saving blurred image %s: %v\n", blurredPath, err)
 				}
 			}
+		} else {
+			fmt.Println("The 'optimizeImages' key was not found in gothic-config.json.")
 		}
+
 	}
 
 	fmt.Println("Resizing complete!")

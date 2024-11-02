@@ -4,14 +4,14 @@ S3_BUCKET ?= gothic-example-public-bucket-$(STAGE)
 # Commands
 TEMPL_CMD = templ generate
 TAILWIND_CMD = ./tailwindcss -i src/css/app.css -o public/styles.css  --minify
-SAM_BUILD_CMD = sam build
-SAM_DEPLOY_CMD = sam deploy --stack-name gothic-example-${STAGE} --parameter-overrides Stage=$(STAGE)
-SAM_DELETE_CMD = sam delete --stack-name gothic-example-${STAGE}
+SAM_BUILD_CMD = sam build --config-file .gothicCli/deploy/samconfig.toml
+SAM_DEPLOY_CMD = sam deploy --stack-name gothic-example-${STAGE} --parameter-overrides Stage=$(STAGE) --config-file .gothicCli/deploy/samconfig.toml
+SAM_DELETE_CMD = sam delete --stack-name gothic-example-${STAGE} --config-file .gothicCli/deploy/samconfig.toml
 AWS_CP_CMD = aws s3 cp public s3://$(S3_BUCKET)/public --recursive
 AWS_RM_CMD =  aws s3 rm s3://$(S3_BUCKET)/public --recursive
 SERVE_APP_CMD = air
-HOT_RELOAD_CMD = go run CLI/HotReload/main.go
-OPTIMIZE_CMD = go run CLI/imgOptimization/main.go
+HOT_RELOAD_CMD = go run .gothicCli/HotReload/main.go
+OPTIMIZE_CMD = go run .gothicCli/imgOptimization/main.go
 
 # To deploy your app and public folder
 deploy: 
@@ -31,7 +31,7 @@ serve-app:
 	$(SERVE_APP_CMD)	
 
 # Starts your Application in dev mode watching Templates, golang files and CSS files
-hot-reload: 
+dev: 
 	$(HOT_RELOAD_CMD)
 
 

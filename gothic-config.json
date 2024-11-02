@@ -1,0 +1,6 @@
+{
+  "projectName": "gothic-example",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  }
+}

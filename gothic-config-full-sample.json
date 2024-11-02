@@ -1,0 +1,46 @@
+{
+  "projectName": "gothic-example",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  },
+  "deploy": {
+    "serverMemory": 128,
+    "serverTimeout": 30,
+    "region": "us-east-1",
+    "stages": {
+      "default": {
+        "BucketName": "gothic-example-public-bucket-default",
+        "LambdaName": "gothic-example-lambda-app-default",
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {}
+      },
+      "dev": {
+        "BucketName": "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}",
+        "LambdaName": "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}",
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {}
+      },
+      "staging": {
+        "BucketName": "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}",
+        "LambdaName": "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}",
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {}
+      },
+      "prod": {
+        "BucketName": "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}",
+        "LambdaName": "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}",
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {}
+      }
+    },
+    "customDomain": false
+  }
+}

@@ -1,7 +1,6 @@
 package components
 
-
-	/**
+/**
 	*                           Image Optimization
 	*
 	* This is how you optimize your SEO with lazy loading images
@@ -9,18 +8,18 @@ package components
     * To make this work we first load the same image with lower
     * resolution and after the page loads we fetch the original image
     * with the same fixed length, given the user the impression that
-    * the page loaded faster. 
+    * the page loaded faster.
     * From the user's perspective the image will be blurred at first
-    * then it will appear with full resolution in a smoth and almost 
+    * then it will appear with full resolution in a smoth and almost
     * inperceptive transition.
-    * 
+    *
 	*
-	*/
-templ OptimizedImage(isFirstLoad bool,imgName string, imgExtension string,alt string) {
-        if isFirstLoad {
-            <img alt={alt} class={"w-full h-full"} hx-trigger="load" hx-swap="outerHTML" hx-get={"/optimizedImage/"+imgName+"/"+imgExtension+"/"+alt} src={"/public/"+imgName+"/blurred."+imgExtension}/>
-        }else{
-            <img alt={alt} class={"w-full h-full"} src={"/public/"+imgName+"/original."+imgExtension}/>
-        }
-      
+*/
+
+templ OptimizedImage(isFirstLoad bool, imgName string, imgExtension string, alt string) {
+	if isFirstLoad {
+		<img alt={ alt } class={ "w-full h-full" } hx-trigger="load" hx-swap="outerHTML" hx-get={ "/optimizedImage/" + imgName + "/" + imgExtension + "/" + alt } src={ "/public/" + imgName + "/blurred." + imgExtension }/>
+	} else {
+		<img alt={ alt } class={ "w-full h-full" } src={ "/public/" + imgName + "/original." + imgExtension }/>
+	}
 }

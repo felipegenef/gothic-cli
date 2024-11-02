@@ -7,8 +7,8 @@ Description: >
 
 Globals:
   Function:
-    Timeout: 30
-    MemorySize: 128
+    Timeout: 
+    MemorySize: 
 
 Parameters:
   Stage:
@@ -23,33 +23,13 @@ Parameters:
 
 Mappings:
   StagesMap:
-    default:
-      BucketName: "gothic-example-public-bucket-default"
-      LambdaName: "gothic-example-lambda-app-default"
-      # customDomain: "default.yourDomain.com"
-      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/default/domain-hosted-zone}}" # The one from your domain
+    stageReplacerString:
+      bucketNameReplacerString
+      lambdaNameReplacerString
+      customDomainReplacerString
+      hostedZoneReplacerString
       HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-    dev:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
-      LambdaName:
-        "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
-      # customDomain: "dev.yourDomain.com"
-      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/dev/domain-hosted-zone}}" # The one from your domain
-      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-    staging:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/staging/bucket-name}}"
-      LambdaName:
-        "{{resolve:ssm:/GOTHIC-STACK/staging/lambda-name}}"
-      # customDomain: "staging.yourDomain.com"
-      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/staging/domain-hosted-zone}}" # The one from your domain
-      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-    prod:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/prod/bucket-name}}"
-      LambdaName:
-        "{{resolve:ssm:/GOTHIC-STACK/prod/lambda-name}}"
-      # customDomain: "yourDomain.com"
-      # hostedZoneId: "{{resolve:ssm:/GOTHIC-STACK/prod/domain-hosted-zone}}" # The one from your domain
-      HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
+stageMapStringReplacer
 
 
 # This was added for multi region lambda server support. Check out CloudFrontDistribution Origins to see.
@@ -69,22 +49,23 @@ Resources:
       Environment:
         Variables:
           HTTP_LISTEN_ADDR: !FindInMap [StagesMap, !Ref Stage, HttpServerPort] ## Labda WEB adapters use port 8080 by default.
+EnvStringReplacer
       FunctionUrlConfig:
         AuthType: AWS_IAM
     Metadata:
       DockerTag: provided
       DockerContext: ./
       Dockerfile: Dockerfile
-  # AppCustomCertificate:
-  #   Type: AWS::CertificateManager::Certificate
-  #   Properties:
-  #     DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
-  #     ValidationMethod: DNS
-  #     DomainValidationOptions:
-  #       - DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
-  #         HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
-  #     SubjectAlternativeNames:
-  #       - !FindInMap [StagesMap, !Ref Stage, customDomain]
+  AppCustomCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !FindInMap [StagesMap, !Ref Stage, customDomain]
+          HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
+      SubjectAlternativeNames:
+        - !FindInMap [StagesMap, !Ref Stage, customDomain]
 
   # CloudFront Distribution with Lambda function URL as the origin with Origin and Behaviors configuration
   # following best practices for a Lambda function URL origin.
@@ -142,26 +123,26 @@ Resources:
           ForwardedValues:
             QueryString: true
         ViewerCertificate:
-          CloudFrontDefaultCertificate: true
+          CloudFrontDefaultCertificate: false
           MinimumProtocolVersion: TLSv1.2_2021
-        #   AcmCertificateArn: !Ref AppCustomCertificate
-        #   SslSupportMethod: sni-only
-        # Aliases:
-        #   - !FindInMap [StagesMap, !Ref Stage, customDomain]
+          AcmCertificateArn: !Ref AppCustomCertificate
+          SslSupportMethod: sni-only
+        Aliases:
+          - !FindInMap [StagesMap, !Ref Stage, customDomain]
         HttpVersion: http2
         PriceClass: PriceClass_All
-  # CustomDomainRoute53RecordSet:
-  #   DependsOn: CloudFrontDistribution
-  #   Type: AWS::Route53::RecordSet
-  #   Properties:
-  #     HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
-  #     Name: !FindInMap [StagesMap, !Ref Stage, customDomain]
-  #     Type: A
-  #     Region: us-east-1
-  #     SetIdentifier: !Sub "${AWS::StackName}-custom-domain-record"
-  #     AliasTarget:
-  #       DNSName: !GetAtt CloudFrontDistribution.DomainName
-  #       HostedZoneId: "Z2FDTNDATAQYW2" # Mocked value for all cloudfront apis besides china (Z3RFFRIM2A3IF5)
+  CustomDomainRoute53RecordSet:
+    DependsOn: CloudFrontDistribution
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !FindInMap [StagesMap, !Ref Stage, hostedZoneId]
+      Name: !FindInMap [StagesMap, !Ref Stage, customDomain]
+      Type: A
+      Region: us-east-1
+      SetIdentifier: !Sub "${AWS::StackName}-custom-domain-record"
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: "Z2FDTNDATAQYW2" # Mocked value for all cloudfront apis besides china (Z3RFFRIM2A3IF5)
 
   # Permission to invoke the Lambda function from the CloudFront Distrinbution
   ServerLambdaInvokePermissionForCloudFront:
@@ -267,6 +248,6 @@ Outputs:
   GothServerLambdaURL:
     Description: "Lambda function url to access server"
     Value: !GetAtt GothServerUrl.FunctionUrl
-  # CloudFrontCustomDomainName:
-  #   Description: "The CloudFront Distribution Domain Name"
-  #   Value: !FindInMap [ StagesMap, !Ref Stage, customDomain ]
+  CloudFrontCustomDomainName:
+    Description: "The CloudFront Distribution Domain Name"
+    Value: !FindInMap [ StagesMap, !Ref Stage, customDomain ]

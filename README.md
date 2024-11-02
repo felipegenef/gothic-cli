@@ -42,7 +42,7 @@ gothic-cli --init
 6. Run your server locally
 
 ```bash
-make hot-reload
+make dev
 ```
 
 7. change "gothic-example" name for your unique (s3 names need to be unique) desired stack name on:
@@ -406,15 +406,10 @@ This will show your custom domain attached to your CDN on the terminal after dep
 - [x] Multi-Stage Deployments
 - [x] Custom Domain
 - [x] Custom Region infrastructure
-- [x] Boilerplate command to create project structure
-- [x] Boilerplate command to create Page
-- [x] Boilerplate command to create static Page
-- [x] Boilerplate command to create ISR Page
-- [x] Boilerplate command to create api route
-- [x] Boilerplate command to create ISR api route
-- [x] Boilerplate command to create component
-- [x] Boilerplate command to create ISR component
-- [x] Boilerplate command to create Lazy Load component
+- [x] CLI creating boilerplates for basic component, pages and api routes
 - [x] Delete or set a limit for old ECR images
+- [ ] Config File
+- [ ] Documenting deploy config file
+- [ ] Config create SAM templates based on json and deploy
 - [ ] Multi-Region (Edge Functions)
 - [ ] Website Docs
