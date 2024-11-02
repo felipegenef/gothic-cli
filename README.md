@@ -408,8 +408,8 @@ This will show your custom domain attached to your CDN on the terminal after dep
 - [x] Custom Region infrastructure
 - [x] CLI creating boilerplates for basic component, pages and api routes
 - [x] Delete or set a limit for old ECR images
-- [ ] Config File
+- [x] Config File
 - [ ] Documenting deploy config file
-- [ ] Config create SAM templates based on json and deploy
+- [x] Config create SAM templates based on json and deploy
 - [ ] Multi-Region (Edge Functions)
 - [ ] Website Docs

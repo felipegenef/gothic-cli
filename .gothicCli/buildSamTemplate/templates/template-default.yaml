@@ -7,8 +7,8 @@ Description: >
 
 Globals:
   Function:
-    Timeout: 
-    MemorySize: 
+    Timeout: timeoutReplacerString
+    MemorySize: memoryReplacerString
 
 Parameters:
   Stage:

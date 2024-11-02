@@ -10,9 +10,11 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/teris-io/shortid"
 )
 
-//go:embed Dockerfile
+//go:embed .gothicCli/buildSamTemplate/templates/Dockerfile-template
 var dockerFile embed.FS
 
 //go:embed go.mod
@@ -27,7 +29,7 @@ var mainServerFile embed.FS
 //go:embed makefile
 var makeFile embed.FS
 
-//go:embed .gothicCli/buildSamTemplate/samconfig.toml
+//go:embed .gothicCli/buildSamTemplate/samconfig-template.toml
 var samConfigTom embed.FS
 
 //go:embed tailwind.config.js
@@ -35,6 +37,15 @@ var tailwindConfig embed.FS
 
 //go:embed tailwindcss
 var tailwindCSS embed.FS
+
+//go:embed .gothicCli/buildSamTemplate/cleanup/main.go
+var cleanupDeployScript embed.FS
+
+//go:embed .gothicCli/sam/main.go
+var samDeployScript embed.FS
+
+//go:embed .gothicCli/CdnAddOrRemoveAssets/main.go
+var CdnAddOrRemoveAssetsScript embed.FS
 
 //go:embed .gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml
 var templateCustomDomainWithArnYaml embed.FS
@@ -136,12 +147,36 @@ node_modules
 .aws-sam
 tmp
 optimize/*
-public/styles.css`
+public/styles.css
+template.yaml
+samconfig.toml`
 
-var rootDirs = []string{"public", ".gothicCli", "src", "optimize"}
-var cliDirs = []string{".gothicCli/HotReload", ".gothicCli/imgOptimization", ".gothicCli/buildSamTemplate", ".gothicCli/buildSamTemplate/templates"}
-var srcDirs = []string{"src/api", "src/components", "src/css", "src/layouts", "src/pages", "src/utils"}
-var publicDirs = []string{"public/imageExample"}
+var rootDirs = []string{
+	"public",
+	".gothicCli",
+	"src",
+	"optimize",
+}
+var cliDirs = []string{
+	".gothicCli/HotReload",
+	".gothicCli/imgOptimization",
+	".gothicCli/buildSamTemplate",
+	".gothicCli/buildSamTemplate/templates",
+	".gothicCli/buildSamTemplate/cleanup",
+	".gothicCli/CdnAddOrRemoveAssets",
+	".gothicCli/sam",
+}
+var srcDirs = []string{
+	"src/api",
+	"src/components",
+	"src/css",
+	"src/layouts",
+	"src/pages",
+	"src/utils",
+}
+var publicDirs = []string{
+	"public/imageExample",
+}
 
 var cliFiles = map[string]embed.FS{
 	".gothicCli/HotReload/main.go":       hotReloadScript,
@@ -150,8 +185,12 @@ var cliFiles = map[string]embed.FS{
 	".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml": templateCustomDomainWithArnYaml,
 	".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml":          templateCustomDomainYaml,
 	".gothicCli/buildSamTemplate/templates/template-default.yaml":                templateDefaultYaml,
-	".gothicCli/buildSamTemplate/samconfig.toml":                                 samConfigTom,
+	".gothicCli/buildSamTemplate/samconfig-template.toml":                        samConfigTom,
 	".gothicCli/buildSamTemplate/main.go":                                        buildSamTemplateScript,
+	".gothicCli/buildSamTemplate/templates/Dockerfile-template":                  dockerFile,
+	".gothicCli/buildSamTemplate/cleanup/main.go":                                cleanupDeployScript,
+	".gothicCli/CdnAddOrRemoveAssets/main.go":                                    CdnAddOrRemoveAssetsScript,
+	".gothicCli/sam/main.go":                                                     samDeployScript,
 }
 
 var publicFolderFiles = map[string]embed.FS{
@@ -161,10 +200,10 @@ var publicFolderFiles = map[string]embed.FS{
 }
 
 var rootFiles = map[string]embed.FS{
-	"Dockerfile": dockerFile,
-	"go.mod":     goMod,
-	"go.sum":     goSum,
-	"makefile":   makeFile,
+
+	"go.mod":   goMod,
+	"go.sum":   goSum,
+	"makefile": makeFile,
 
 	"tailwind.config.js": tailwindConfig,
 
@@ -251,6 +290,14 @@ func installRequiredLibs() {
 
 // Function to create directories and files
 func initializeProject(projectName string) error {
+	upperId, err := shortid.Generate()
+	if err != nil {
+		fmt.Println("Error generating short ID:", err)
+		return fmt.Errorf("Error generating app id")
+	}
+
+	id := strings.ToLower(upperId)
+
 	for _, dir := range rootDirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			return err
@@ -280,12 +327,13 @@ func initializeProject(projectName string) error {
 		os.WriteFile(".air.toml", []byte(airToml), 0644)
 	}()
 
-	go func() {
-		os.WriteFile(".env", []byte(envs), 0644)
-	}()
+	go func(appId string) {
+
+		os.WriteFile(".gothicCli/app-id.txt", []byte(appId), 0644)
+	}(id)
 
 	go func() {
-		os.WriteFile(".env.sample", []byte(envs), 0644)
+		os.WriteFile(".env", []byte(envs), 0644)
 	}()
 
 	go func() {
@@ -367,6 +415,16 @@ func initializeProject(projectName string) error {
 	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "src/pages/revalidate.templ"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/revalidate.templ", err)
+	}
+
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/CdnAddOrRemoveAssets/main.go"); err != nil {
+
+		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/CdnAddOrRemoveAssets/main.go", err)
+	}
+
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/sam/main.go"); err != nil {
+
+		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/sam/main.go", err)
 	}
 
 	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/imgOptimization/main.go"); err != nil {

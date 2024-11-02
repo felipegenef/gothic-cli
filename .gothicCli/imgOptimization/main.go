@@ -8,16 +8,28 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 
-	"github.com/chai2010/webp"
 	gothicCliShared "github.com/felipegenef/gothic-cli/.gothicCli"
+
+	"github.com/chai2010/webp"
 	"github.com/nfnt/resize"
 )
 
 func main() {
 	inputDir := "./optimize"
 	outputDir := "./public"
+	downloadResizeCMD := exec.Command("go", "mod", "download", "github.com/nfnt/resize")
+	downloadWebpCMD := exec.Command("go", "mod", "download", "github.com/chai2010/webp")
+	// Make sure needed packages have been downloaded
+	if err := downloadResizeCMD.Run(); err != nil {
+		log.Fatalf("Error executing add command: %v", err)
+	}
+	if err := downloadWebpCMD.Run(); err != nil {
+		log.Fatalf("Error executing add command: %v", err)
+	}
+
 	file, err := os.Open("gothic-config.json")
 	if err != nil {
 		log.Fatalf("Error opening file: %v", err)

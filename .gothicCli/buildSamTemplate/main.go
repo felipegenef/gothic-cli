@@ -6,93 +6,97 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
-	gothicCliShared "github.com/felipegenef/gothic-cli/.gothicCli"
+	gothicCliShared "my-gothic-project-module/.gothicCli"
 )
 
 func main() {
-	// Define o flag --stage para especificar o ambiente (dev, staging, prod)
+	// Define the --stage flag to specify the environment (dev, staging, prod)
 	stage := flag.String("stage", "default", "Specify the deployment stage (default, dev, staging, prod)")
 	flag.Parse()
 
-	// Abre o arquivo de configuração
+	var stageValue string
+	if stage != nil {
+		stageValue = *stage
+	} else {
+		stageValue = "" // or a default value
+	}
+
+	// Open the configuration file
 	file, err := os.Open("gothic-config.json")
 	if err != nil {
 		log.Fatalf("Error opening file: %v", err)
 	}
 	defer file.Close()
 
-	// Cria uma variável para armazenar a configuração
+	// Create a variable to store the configuration
 	var config gothicCliShared.Config
 
-	// Decodifica o JSON do arquivo
+	// Decode the JSON from the file
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&config)
 	if err != nil {
 		log.Fatalf("Error decoding JSON: %v", err)
 	}
 
-	// Verifica se a configuração de Deploy está presente
+	// Check if the Deploy configuration is present
 	if config.Deploy == nil {
-		log.Fatalf("Deploy configuration missing on gothic-config.json")
+		log.Fatalf("Deploy configuration missing in gothic-config.json")
+	}
+	fmt.Println("SELECTED STAGE: " + stageValue)
+	// Select the environment based on the --stage parameter
+	var envConfig gothicCliShared.EnvVariables = config.Deploy.Stages[stageValue]
+
+	content, err := os.ReadFile(".gothicCli/app-id.txt")
+	if err != nil {
+		fmt.Println("Error reading file:", err)
+		return
 	}
 
-	// Seleciona o ambiente com base no parâmetro --stage
-	var envConfig *gothicCliShared.EnvVariables
+	// Convert the content to string
+	appID := string(content)
 
-	switch *stage {
-	case "default":
-		envConfig = &config.Deploy.Stages.Default
-	case "dev":
-		envConfig = &config.Deploy.Stages.Dev
-	case "staging":
-		envConfig = &config.Deploy.Stages.Staging
-	case "prod":
-		envConfig = &config.Deploy.Stages.Prod
-
-	default:
-		log.Fatalf("Invalid stage: %s. Must be one of: dev, staging, prod", *stage)
-	}
-
-	// Verifica se as variáveis mínimas estão definidas
+	// Check if the minimum variables are set
 	if envConfig.BucketName == "" || envConfig.LambdaName == "" {
-		log.Fatalf("Both BucketName and LambdaName must be set for stage: %s", *stage)
+		envConfig.LambdaName = config.ProjectName + "-" + stageValue + "-" + appID
+		envConfig.BucketName = config.ProjectName + "-" + stageValue + "-" + appID
 	}
 
-	// Substitui o nome do projeto em todos os arquivos
+	// Replace the project name in all files
 	filePaths := []string{
-		".gothicCli/buildSamTemplate/samconfig.toml",
+		".gothicCli/buildSamTemplate/samconfig-template.toml",
 		".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml",
 		".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml",
 		".gothicCli/buildSamTemplate/templates/template-default.yaml",
 	}
 
 	for _, filePath := range filePaths {
-		if err := replaceOnFile("gothic-example", config.ProjectName, filePath); err != nil {
-			log.Fatalf("error replacing project name to file %s: %w", filePath, err)
+		if err := replaceInFile("gothic-example", config.ProjectName, filePath); err != nil {
+			log.Fatalf("Error replacing project name in file %s: %w", filePath, err)
 		}
 	}
 
-	// Substitui a região
-	if err := replaceOnFile("us-east-1", config.Deploy.Region, ".gothicCli/buildSamTemplate/samconfig.toml"); err != nil {
-		log.Fatalf("error replacing region in file %s: %w", ".gothicCli/buildSamTemplate/samconfig.toml", err)
+	// Replace the region
+	if err := replaceInFile("regionReplacerString", config.Deploy.Region, ".gothicCli/buildSamTemplate/samconfig-template.toml"); err != nil {
+		log.Fatalf("Error replacing region in file %s: %w", ".gothicCli/buildSamTemplate/samconfig-template.toml", err)
 	}
 
-	// Verifica se um domínio customizado é necessário
+	// Check if a custom domain is needed
 	if config.Deploy.CustomDomain {
 		if config.Deploy.Region != "us-east-1" && envConfig.CertificateArn == nil {
-			log.Fatalf("For custom domains, if you set a different region than us-east-1, you should provide a us-east-1 ACM CertificateArn on your Environment variables")
+			log.Fatalf("For custom domains, if you set a region other than us-east-1, you must provide a us-east-1 ACM CertificateArn in your environment variables")
 		}
 
 		if envConfig.CustomDomain != nil || envConfig.HostedZoneId != nil {
 			templateFile := ".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml"
 			if envConfig.CertificateArn != nil {
-				if err := replaceOnFile("AcmArnReplacerString", *envConfig.CertificateArn, templateFile); err != nil {
-					log.Fatalf("error replacing certificate ARN in template file: %w", err)
+				if err := replaceInFile("AcmArnReplacerString", *envConfig.CertificateArn, templateFile); err != nil {
+					log.Fatalf("Error replacing certificate ARN in template file: %w", err)
 				}
 				copyFile(templateFile, "template.yaml")
-				replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, *stage, "template.yaml")
+				replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stageValue, "template.yaml")
 				replaceCustomDomainWithArnValues(envConfig.CustomDomain, envConfig.HostedZoneId, envConfig.CertificateArn, "template.yaml")
 				replaceEnvVariables(envConfig.ENV, "template.yaml")
 				replaceTimeoutAndMemory(config.Deploy.ServerTimeout, config.Deploy.ServerMemory, "template.yaml")
@@ -100,7 +104,7 @@ func main() {
 			} else {
 				templateFile := ".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml"
 				copyFile(templateFile, "template.yaml")
-				replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, *stage, "template.yaml")
+				replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stageValue, "template.yaml")
 				replaceCustomDomainValues(envConfig.CustomDomain, envConfig.HostedZoneId, "template.yaml")
 				replaceEnvVariables(envConfig.ENV, "template.yaml")
 				replaceTimeoutAndMemory(config.Deploy.ServerTimeout, config.Deploy.ServerMemory, "template.yaml")
@@ -111,27 +115,32 @@ func main() {
 	} else {
 		templateFile := ".gothicCli/buildSamTemplate/templates/template-default.yaml"
 		copyFile(templateFile, "template.yaml")
-		// Substitui as variáveis de ambiente
+		// Replace the environment variables
 		replaceEnvVariables(envConfig.ENV, "template.yaml")
-		replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, *stage, "template.yaml")
+		replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stageValue, "template.yaml")
 		replaceTimeoutAndMemory(config.Deploy.ServerTimeout, config.Deploy.ServerMemory, "template.yaml")
 
 	}
 
-	copyFile(".gothicCli/buildSamTemplate/samconfig.toml", "samconfig.toml")
+	copyFile(".gothicCli/buildSamTemplate/templates/Dockerfile-template", "Dockerfile")
+	copyFile(".gothicCli/buildSamTemplate/samconfig-template.toml", "samconfig.toml")
+	// Replace the region
+	if err := replaceInFile("regionReplacerString", config.Deploy.Region, "samconfig.toml"); err != nil {
+		log.Fatalf("Error replacing region in file %s: %w", "samconfig.toml", err)
+	}
 }
 
 func replaceStageBucketAndLambdaName(lambdaName string, bucketName string, stage string, templateFile string) {
-	if err := replaceOnFile("lambdaNameReplacerString", `LambdaName: "`+lambdaName+`"`, templateFile); err != nil {
-		log.Fatalf("error adding lambda value to sam template file")
+	if err := replaceInFile("lambdaNameReplacerString", `LambdaName: "`+lambdaName+`"`, templateFile); err != nil {
+		log.Fatalf("Error adding lambda value to SAM template file")
 	}
 
-	if err := replaceOnFile("bucketNameReplacerString", `BucketName: "`+bucketName+`"`, templateFile); err != nil {
-		log.Fatalf("error adding bucket value to sam template file")
+	if err := replaceInFile("bucketNameReplacerString", `BucketName: "`+bucketName+`"`, templateFile); err != nil {
+		log.Fatalf("Error adding bucket value to SAM template file")
 	}
 
-	if err := replaceOnFile("stageReplacerString", stage, templateFile); err != nil {
-		log.Fatalf("error adding stage value to sam template file")
+	if err := replaceInFile("stageReplacerString", stage, templateFile); err != nil {
+		log.Fatalf("Error adding stage value to SAM template file")
 	}
 }
 
@@ -140,84 +149,95 @@ func replaceEnvVariables(env map[string]interface{}, templateFile string) {
 	finalEnvReplacer := ""
 
 	for key, value := range env {
-		finalStageMapReplacer += "      " + key + ": " + fmt.Sprintf("%v", value) + "\n"
+		var formattedValue string
+
+		// Check the type of the value
+		if strValue, ok := value.(string); ok {
+			// If the value is a string, add quotes
+			formattedValue = fmt.Sprintf("%q", strValue) // %q adds quotes around the string
+		} else {
+			// For other types, use default formatting
+			formattedValue = fmt.Sprintf("%v", value)
+		}
+
+		finalStageMapReplacer += "      " + key + ": " + formattedValue + "\n"
 		finalEnvReplacer += "          " + key + ": !FindInMap [StagesMap, !Ref Stage, " + key + "]\n"
 	}
 
-	// Substitui no arquivo com o conteúdo do mapa
-	if err := replaceOnFile("stageMapStringReplacer", finalStageMapReplacer, templateFile); err != nil {
-		log.Fatalf("error adding stage map value to sam template file: %v", err)
+	// Replace in the file with the map content
+	if err := replaceInFile("stageMapStringReplacer", finalStageMapReplacer, templateFile); err != nil {
+		log.Fatalf("Error adding stage map value to SAM template file: %v", err)
 	}
 
-	if err := replaceOnFile("EnvStringReplacer", finalEnvReplacer, templateFile); err != nil {
-		log.Fatalf("error adding env value to sam template file: %v", err)
+	if err := replaceInFile("EnvStringReplacer", finalEnvReplacer, templateFile); err != nil {
+		log.Fatalf("Error adding env value to SAM template file: %v", err)
 	}
 }
 
 func replaceCustomDomainValues(customDomain *string, hostedZone *string, templateFile string) {
-	// Verifica se customDomain não é nil antes de desreferenciá-lo
+	// Check if customDomain is not nil before dereferencing it
 	var customDomainValue string
 	if customDomain != nil {
 		customDomainValue = *customDomain
 	} else {
-		customDomainValue = "" // ou um valor padrão
+		customDomainValue = "" // or a default value
 	}
 
-	// Verifica se hostedZone não é nil antes de desreferenciá-lo
+	// Check if hostedZone is not nil before dereferencing it
 	var hostedZoneValue string
 	if hostedZone != nil {
 		hostedZoneValue = *hostedZone
 	} else {
-		hostedZoneValue = "" // ou um valor padrão
+		hostedZoneValue = "" // or a default value
 	}
 
-	if err := replaceOnFile("customDomainReplacerString", `customDomain: "`+customDomainValue+`"`, templateFile); err != nil {
-		log.Fatalf("error adding custom domain value to sam template file: %v", err)
+	if err := replaceInFile("customDomainReplacerString", `customDomain: "`+customDomainValue+`"`, templateFile); err != nil {
+		log.Fatalf("Error adding custom domain value to SAM template file: %v", err)
 	}
 
-	if err := replaceOnFile("hostedZoneReplacerString", `hostedZoneId: "`+hostedZoneValue+`"`, templateFile); err != nil {
-		log.Fatalf("error adding hosted zone value to sam template file: %v", err)
+	if err := replaceInFile("hostedZoneReplacerString", `hostedZoneId: "`+hostedZoneValue+`"`, templateFile); err != nil {
+		log.Fatalf("Error adding hosted zone value to SAM template file: %v", err)
 	}
 }
 
 func replaceCustomDomainWithArnValues(customDomain *string, hostedZone *string, arn *string, templateFile string) {
-	// Chama a função que substitui valores de domínio customizado
+	// Call the function that replaces custom domain values
 	replaceCustomDomainValues(customDomain, hostedZone, templateFile)
 
-	// Verifica se arn não é nil antes de desreferenciá-lo
+	// Check if arn is not nil before dereferencing it
 	var arnValue string
 	if arn != nil {
 		arnValue = *arn
 	} else {
-		arnValue = "" // ou um valor padrão
+		arnValue = "" // or a default value
 	}
 
-	// Substitui o valor do ARN no arquivo de template
-	if err := replaceOnFile("certificateArnReplacerString", `certificateArn: "`+arnValue+`"`, templateFile); err != nil {
-		log.Fatalf("error adding arn value to sam template file: %v", err)
+	// Replace the ARN value in the template file
+	if err := replaceInFile("certificateArnReplacerString", `certificateArn: "`+arnValue+`"`, templateFile); err != nil {
+		log.Fatalf("Error adding ARN value to SAM template file: %v", err)
 	}
 }
 
 func replaceTimeoutAndMemory(timeoutValue int, memoryValue int, templateFile string) {
-	if err := replaceOnFile("timeoutReplacerString", string(timeoutValue), templateFile); err != nil {
-		log.Fatalf("error adding timeout value to sam template file")
+	if err := replaceInFile("timeoutReplacerString", strconv.Itoa(timeoutValue), templateFile); err != nil {
+		log.Fatalf("Error adding timeout value to SAM template file")
 	}
 
-	if err := replaceOnFile("memoryReplacerString", string(memoryValue), templateFile); err != nil {
-		log.Fatalf("error adding memory value to sam template file")
+	if err := replaceInFile("memoryReplacerString", strconv.Itoa(memoryValue), templateFile); err != nil {
+		log.Fatalf("Error adding memory value to SAM template file")
 	}
 }
 
-func copyFile(filePath string, destinyPath string) error {
+func copyFile(filePath string, destinationPath string) error {
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(destinyPath, fileContent, 0644)
+	return os.WriteFile(destinationPath, fileContent, 0644)
 }
 
-func replaceOnFile(originalString string, replaceString string, filePath string) error {
+func replaceInFile(originalString string, replaceString string, filePath string) error {
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		return err

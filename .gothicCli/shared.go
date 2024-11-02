@@ -9,24 +9,17 @@ type Config struct {
 }
 
 type DeployConfig struct {
-	ServerMemory  int               `json:"serverMemory"`
-	ServerTimeout int               `json:"serverTimeout"`
-	Region        string            `json:"region"`
-	Stages        EnvironmentConfig `json:"stages"`
-	CustomDomain  bool              `json:"customDomain"`
+	ServerMemory  int                     `json:"serverMemory"`
+	ServerTimeout int                     `json:"serverTimeout"`
+	Region        string                  `json:"region"`
+	Stages        map[string]EnvVariables `json:"stages"`
+	CustomDomain  bool                    `json:"customDomain"`
 }
 type EnvVariables struct {
-	BucketName     string                 `json:"BucketName"`
-	LambdaName     string                 `json:"LambdaName"`
+	BucketName     string
+	LambdaName     string
 	HostedZoneId   *string                `json:"hostedZoneId"`
 	CustomDomain   *string                `json:"customDomain"`
 	CertificateArn *string                `json:"certificateArn"`
 	ENV            map[string]interface{} `json:"env,omitempty"`
-}
-
-type EnvironmentConfig struct {
-	Default EnvVariables `json:"default"`
-	Dev     EnvVariables `json:"dev"`
-	Staging EnvVariables `json:"staging"`
-	Prod    EnvVariables `json:"prod"`
 }

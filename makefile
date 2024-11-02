@@ -1,30 +1,35 @@
 STAGE ?= default
-S3_BUCKET ?= gothic-example-public-bucket-$(STAGE)
 
 # Commands
 TEMPL_CMD = templ generate
+GENERATE_SAM_TEMPLATE_CMD = go run .gothicCli/buildSamTemplate/main.go --stage $(STAGE)
+CLEANUP_DEPLOY_FILES = go run .gothicCli/buildSamTemplate/cleanup/main.go
 TAILWIND_CMD = ./tailwindcss -i src/css/app.css -o public/styles.css  --minify
-SAM_BUILD_CMD = sam build --config-file .gothicCli/deploy/samconfig.toml
-SAM_DEPLOY_CMD = sam deploy --stack-name gothic-example-${STAGE} --parameter-overrides Stage=$(STAGE) --config-file .gothicCli/deploy/samconfig.toml
-SAM_DELETE_CMD = sam delete --stack-name gothic-example-${STAGE} --config-file .gothicCli/deploy/samconfig.toml
-AWS_CP_CMD = aws s3 cp public s3://$(S3_BUCKET)/public --recursive
-AWS_RM_CMD =  aws s3 rm s3://$(S3_BUCKET)/public --recursive
+SAM_BUILD_CMD = go run .gothicCli/sam/main.go --action build
+SAM_DEPLOY_CMD = go run .gothicCli/sam/main.go --action deploy --stage $(STAGE)
+SAM_DELETE_CMD = go run .gothicCli/sam/main.go --action delete --stage $(STAGE)
+AWS_CP_CMD = go run .gothicCli/CdnAddOrRemoveAssets/main.go --stage $(STAGE) --action add
+AWS_RM_CMD =  go run .gothicCli/CdnAddOrRemoveAssets/main.go --stage $(STAGE) --action delete
 SERVE_APP_CMD = air
 HOT_RELOAD_CMD = go run .gothicCli/HotReload/main.go
 OPTIMIZE_CMD = go run .gothicCli/imgOptimization/main.go
 
 # To deploy your app and public folder
 deploy: 
+	$(GENERATE_SAM_TEMPLATE_CMD)
 	$(TEMPL_CMD)
 	$(TAILWIND_CMD)
 	$(SAM_BUILD_CMD)
 	$(SAM_DEPLOY_CMD)
 	${OPTIMIZE_CMD}
 	$(AWS_CP_CMD)
+	${CLEANUP_DEPLOY_FILES}
 
 delete: 
+	$(GENERATE_SAM_TEMPLATE_CMD)
 	$(AWS_RM_CMD)
 	$(SAM_DELETE_CMD)
+	${CLEANUP_DEPLOY_FILES}
 
 # Runs and watches your golang app
 serve-app:

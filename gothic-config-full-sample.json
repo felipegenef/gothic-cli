@@ -7,6 +7,7 @@
     "serverMemory": 128,
     "serverTimeout": 30,
     "region": "us-east-1",
+    "customDomain": false,
     "stages": {
       "default": {
         "BucketName": "gothic-example-public-bucket-default",
@@ -40,7 +41,6 @@
         "certificateArn": null,
         "env": {}
       }
-    },
-    "customDomain": false
+    }
   }
 }

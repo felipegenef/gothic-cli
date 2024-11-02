@@ -7,8 +7,8 @@ Description: >
 
 Globals:
   Function:
-    Timeout: 
-    MemorySize: 
+    Timeout: timeoutReplacerString
+    MemorySize: memoryReplacerString
 
 Parameters:
   Stage:
@@ -23,9 +23,9 @@ Parameters:
 
 Mappings:
   StagesMap:
-    dev:
-      BucketName: "{{resolve:ssm:/GOTHIC-STACK/dev/bucket-name}}"
-      LambdaName: "{{resolve:ssm:/GOTHIC-STACK/dev/lambda-name}}"
+    stageReplacerString:
+      bucketNameReplacerString
+      lambdaNameReplacerString
       customDomainReplacerString
       hostedZoneReplacerString
       certificateArnReplacerString
@@ -113,7 +113,6 @@ EnvStringReplacer
           ForwardedValues:
             QueryString: true
         ViewerCertificate:
-          CloudFrontDefaultCertificate: false
           MinimumProtocolVersion: TLSv1.2_2021
           AcmCertificateArn: !FindInMap [StagesMap, !Ref Stage, certificateArn]
           SslSupportMethod: sni-only
