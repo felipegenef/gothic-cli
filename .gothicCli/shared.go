@@ -2,6 +2,7 @@ package gothicCliShared
 
 type Config struct {
 	ProjectName    string `json:"projectName"`
+	GoModName      string `json:"goModuleName"`
 	OptimizeImages struct {
 		LowResolutionRate int `json:"lowResolutionRate"`
 	} `json:"optimizeImages"`
@@ -12,6 +13,7 @@ type DeployConfig struct {
 	ServerMemory  int                     `json:"serverMemory"`
 	ServerTimeout int                     `json:"serverTimeout"`
 	Region        string                  `json:"region"`
+	Profile       string                  `json:"profile"`
 	Stages        map[string]EnvVariables `json:"stages"`
 	CustomDomain  bool                    `json:"customDomain"`
 }

@@ -256,12 +256,13 @@ func main() {
 
 	if *initCmd {
 		projectName := promptForProjectName()
+		goModName := promptForGoModName()
 		if projectName == "" {
 			fmt.Println("Project name cannot be empty.")
 			return
 		}
 
-		if err := initializeProject(projectName); err != nil {
+		if err := initializeProject(projectName, goModName); err != nil {
 			fmt.Printf("Error initializing the project: %v\n", err)
 		} else {
 			installRequiredLibs()
@@ -294,7 +295,7 @@ func installRequiredLibs() {
 }
 
 // Function to create directories and files
-func initializeProject(projectName string) error {
+func initializeProject(projectName string, goModName string) error {
 	upperId, err := shortid.Generate()
 	if err != nil {
 		fmt.Println("Error generating short ID:", err)
@@ -402,47 +403,52 @@ func initializeProject(projectName string) error {
 
 	// change go module from  github.com/felipegenef/gothic-cli
 
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "main.go"); err != nil {
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, "main.go"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", "main.go", err)
 	}
 
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "go.mod"); err != nil {
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, "go.mod"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", "go.mod", err)
 	}
 
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "src/pages/index.templ"); err != nil {
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, "src/pages/index.templ"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/index.templ", err)
 	}
 
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", "src/pages/revalidate.templ"); err != nil {
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, "src/pages/revalidate.templ"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/revalidate.templ", err)
 	}
 
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/CdnAddOrRemoveAssets/main.go"); err != nil {
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, ".gothicCli/CdnAddOrRemoveAssets/main.go"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/CdnAddOrRemoveAssets/main.go", err)
 	}
 
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/sam/main.go"); err != nil {
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, ".gothicCli/sam/main.go"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/sam/main.go", err)
 	}
 
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/imgOptimization/main.go"); err != nil {
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, ".gothicCli/imgOptimization/main.go"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/revalidate.templ", err)
 	}
 
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", "my-gothic-project-module", ".gothicCli/buildSamTemplate/main.go"); err != nil {
+	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, ".gothicCli/buildSamTemplate/main.go"); err != nil {
 
 		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/buildSamTemplate/main.go", err)
 	}
 
 	if err := replaceOnFile("gothic-example", projectName, "gothic-config.json"); err != nil {
+
+		return fmt.Errorf("error replacing project-name name to file %s: %w", "gothic-config.json", err)
+	}
+
+	if err := replaceOnFile("goModuleNameStringReplacer", goModName, "gothic-config.json"); err != nil {
 
 		return fmt.Errorf("error replacing project-name name to file %s: %w", "gothic-config.json", err)
 	}
@@ -668,6 +674,13 @@ func promptForProjectName() string {
 		fmt.Println("Invalid name format. Please use kebab case (lowercase letters and numbers only, with dashes).")
 		return ""
 	}
+	return name
+}
+
+func promptForGoModName() string {
+	var name string
+	fmt.Print("Enter your go module name: ")
+	fmt.Scanln(&name)
 	return name
 }
 

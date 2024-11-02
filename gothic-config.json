@@ -1,5 +1,6 @@
 {
   "projectName": "gothic-example",
+  "goModuleName": "goModuleNameStringReplacer",
   "optimizeImages": {
     "lowResolutionRate": 20
   }

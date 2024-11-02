@@ -13,7 +13,7 @@ import (
 func main() {
 
 	// Define command-line flags
-	action := flag.String("action", "", "Specify the action: deploy, delete or build")
+	action := flag.String("action", "deploy", "Specify the action: deploy, delete or build")
 	stage := flag.String("stage", "default", "Specify the deployment stage (default, dev, staging, prod)")
 	flag.Parse()
 
@@ -43,7 +43,8 @@ func main() {
 
 	switch *action {
 	case "deploy":
-		samDeployCMD := exec.Command("sam", "deploy", "--stack-name", config.ProjectName+"-"+stageValue, "--parameter-overrides", "Stage="+stageValue)
+
+		samDeployCMD := exec.Command("sam", "deploy", "--stack-name", config.ProjectName+"-"+stageValue, "--parameter-overrides", "Stage="+stageValue, "--profile", config.Deploy.Profile)
 		samDeployCMD.Stdout = os.Stdout
 		samDeployCMD.Stdin = os.Stdin
 		samDeployCMD.Stderr = os.Stderr
@@ -54,7 +55,7 @@ func main() {
 		}
 
 	case "delete":
-		samDeleteCMD := exec.Command("sam", "delete", "--stack-name", config.ProjectName+"-"+stageValue)
+		samDeleteCMD := exec.Command("sam", "delete", "--stack-name", config.ProjectName+"-"+stageValue, "--profile", config.Deploy.Profile)
 		samDeleteCMD.Stdout = os.Stdout
 		samDeleteCMD.Stdin = os.Stdin
 		samDeleteCMD.Stderr = os.Stderr
