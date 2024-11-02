@@ -301,8 +301,10 @@ func initializeProject(projectName string, goModName string) error {
 		fmt.Println("Error generating short ID:", err)
 		return fmt.Errorf("Error generating app id")
 	}
-
-	id := strings.ToLower(upperId)
+	// Replace all special characters with -
+	re := regexp.MustCompile(`[^\w\s]|_`)
+	lowerId := strings.ToLower(upperId)
+	id := re.ReplaceAllString(lowerId, "-")
 
 	for _, dir := range rootDirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
