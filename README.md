@@ -257,22 +257,28 @@ You can get variables directly from AWS Parameter Store from the template using 
     "profile": "default",
     "stages": {
       "dev": {
-        "hostedZoneId": "{{resolve:ssm:/gothic-cli/dev/hostedZoneId}}",
-        "customDomain": "dev.mycustomDomain.com",
-        "certificateArn": "{{resolve:ssm:/gothic-cli/dev/certificateArn}}",
-        "env": {}
+        "hostedZoneId": null,
+        "customDomain": null
+        "certificateArn": null,
+        "env": {
+          "MyEnvVar1":"{{resolve:ssm:/gothic-cli/dev/my-env-var-1}}"
+        }
       },
       "qa": {
-        "hostedZoneId": "{{resolve:ssm:/gothic-cli/qa/hostedZoneId}}",
-        "customDomain": "qa.mycustomDomain.com",
-        "certificateArn": "{{resolve:ssm:/gothic-cli/qa/certificateArn}}",
-        "env": {}
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {
+          "MyEnvVar1":"{{resolve:ssm:/gothic-cli/qa/my-env-var-1}}"
+        }
       },
       "prod": {
-        "hostedZoneId": "{{resolve:ssm:/gothic-cli/prod/hostedZoneId}}",
-        "customDomain": "mycustomDomain.com",
-        "certificateArn": "{{resolve:ssm:/gothic-cli/prod/certificateArn}}",
-        "env": {}
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {
+          "MyEnvVar1":"{{resolve:ssm:/gothic-cli/prod/my-env-var-1}}"
+        }
       }
     }
   }
@@ -289,7 +295,7 @@ make deploy STAGE=yourCustomStage
 
 ### Deploy your App with your Custom Domain from AWS
 
-Deploy your app with your custom domain is easy! You will just need your hostedZoneId from your AWS Route 53 hostedZone and the domain or subdomian of your choice. Once you have those two values add them to your `gothic-config.json` as shown below (we recommend storing your hosted zone id in Parameter Store as shown in the example as it is sensitive information):
+Deploy your app with your custom domain is easy! First add `customDomain` flag as true, then you will just need your hostedZoneId from your AWS Route 53 hostedZone and the domain or subdomian of your choice. Once you have those two values add them to your `gothic-config.json` as shown below (we recommend storing your hosted zone id in Parameter Store as shown in the example as it is sensitive information):
 
 ```json
 {
@@ -302,7 +308,7 @@ Deploy your app with your custom domain is easy! You will just need your hostedZ
     "serverMemory": 128,
     "serverTimeout": 30,
     "region": "us-east-1",
-    "customDomain": false,
+    "customDomain": true,
     "profile": "default",
     "stages": {
       "dev": {
@@ -376,7 +382,7 @@ Although this limitation may not be an issue for most use-cases since you can op
     "serverMemory": 128,
     "serverTimeout": 30,
     "region": "eu-central-1",
-    "customDomain": false,
+    "customDomain": true,
     "profile": "default",
     "stages": {
       "dev": {
