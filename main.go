@@ -65,6 +65,9 @@ var readme embed.FS
 //go:embed .gothicCli/HotReload/main.go
 var hotReloadScript embed.FS
 
+//go:embed .gothicCli/imgOptimization/setup/main.go
+var imgOptimizationSetupScript embed.FS
+
 //go:embed .gothicCli/imgOptimization/main.go
 var imgOptimizationScript embed.FS
 
@@ -160,6 +163,7 @@ var rootDirs = []string{
 var cliDirs = []string{
 	".gothicCli/HotReload",
 	".gothicCli/imgOptimization",
+	".gothicCli/imgOptimization/setup",
 	".gothicCli/buildSamTemplate",
 	".gothicCli/buildSamTemplate/templates",
 	".gothicCli/buildSamTemplate/cleanup",
@@ -191,6 +195,7 @@ var cliFiles = map[string]embed.FS{
 	".gothicCli/buildSamTemplate/cleanup/main.go":                                cleanupDeployScript,
 	".gothicCli/CdnAddOrRemoveAssets/main.go":                                    CdnAddOrRemoveAssetsScript,
 	".gothicCli/sam/main.go":                                                     samDeployScript,
+	".gothicCli/imgOptimization/setup/main.go":                                   imgOptimizationSetupScript,
 }
 
 var publicFolderFiles = map[string]embed.FS{

@@ -12,7 +12,8 @@ AWS_CP_CMD = go run .gothicCli/CdnAddOrRemoveAssets/main.go --stage $(STAGE) --a
 AWS_RM_CMD =  go run .gothicCli/CdnAddOrRemoveAssets/main.go --stage $(STAGE) --action delete
 SERVE_APP_CMD = air
 HOT_RELOAD_CMD = go run .gothicCli/HotReload/main.go
-OPTIMIZE_CMD = go run .gothicCli/imgOptimization/main.go
+OPTIMIZE_CMD =  go run .gothicCli/imgOptimization/main.go
+SETUP_OPTIMIZE_CMD = go run .gothicCli/imgOptimization/setup/main.go
 
 # To deploy your app and public folder
 deploy: 
@@ -21,6 +22,7 @@ deploy:
 	$(TAILWIND_CMD)
 	$(SAM_BUILD_CMD)
 	$(SAM_DEPLOY_CMD)
+	$(SETUP_OPTIMIZE_CMD)
 	${OPTIMIZE_CMD}
 	$(AWS_CP_CMD)
 	${CLEANUP_DEPLOY_FILES}
@@ -58,6 +60,7 @@ hot-reload-css:
 
 # Generate CSS based on classes located on templ files in watch mode
 optimize-images:
+	$(SETUP_OPTIMIZE_CMD)
 	$(OPTIMIZE_CMD)
 
 
