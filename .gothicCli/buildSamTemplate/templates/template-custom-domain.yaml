@@ -66,7 +66,7 @@ EnvStringReplacer
   # following best practices for a Lambda function URL origin.
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
-    # DependsOn: AppCustomCertificate
+    DependsOn: AppCustomCertificate
     Properties:
       DistributionConfig:
         CacheBehaviors:
