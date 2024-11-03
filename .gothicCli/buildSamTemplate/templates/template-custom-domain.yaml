@@ -12,11 +12,6 @@ Globals:
 
 Parameters:
   Stage:
-    AllowedValues:
-      - default
-      - dev
-      - staging
-      - prod
     Description: "Pass your Stage to get parameters from SSM"
     Type: String
     Default: default
