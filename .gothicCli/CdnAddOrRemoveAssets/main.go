@@ -57,7 +57,7 @@ func main() {
 	// Check the action and execute the corresponding command
 	switch *action {
 	case "add":
-		addFilesCmd := exec.Command("aws", "s3", "cp", "public", bucketPublicFolderName, "--recursive", "--region", config.Deploy.Region)
+		addFilesCmd := exec.Command("aws", "s3", "cp", "public", bucketPublicFolderName, "--recursive", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
 		addFilesCmd.Stdout = os.Stdout
 		addFilesCmd.Stdin = os.Stdin
 		addFilesCmd.Stderr = os.Stderr
@@ -69,7 +69,7 @@ func main() {
 		fmt.Println("S3 Files added successfully.")
 
 	case "delete":
-		removeFilesCmd := exec.Command("aws", "s3", "rm", bucketPublicFolderName, "--recursive", "--region", config.Deploy.Region)
+		removeFilesCmd := exec.Command("aws", "s3", "rm", bucketPublicFolderName, "--recursive", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
 		removeFilesCmd.Stdout = os.Stdout
 		removeFilesCmd.Stdin = os.Stdin
 		removeFilesCmd.Stderr = os.Stderr
