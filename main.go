@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -29,14 +30,20 @@ var mainServerFile embed.FS
 //go:embed makefile
 var makeFile embed.FS
 
-//go:embed .gothicCli/buildSamTemplate/samconfig-template.toml
+//go:embed .gothicCli/buildSamTemplate/templates/samconfig-template.toml
 var samConfigTom embed.FS
 
 //go:embed tailwind.config.js
 var tailwindConfig embed.FS
 
-//go:embed tailwindcss
-var tailwindCSS embed.FS
+//go:embed tailwindcss-linux
+var tailwindCSSLinux embed.FS
+
+//go:embed tailwindcss-windows.exe
+var tailwindCSSWindows embed.FS
+
+//go:embed tailwindcss-mac
+var tailwindCSSMac embed.FS
 
 //go:embed .gothicCli/buildSamTemplate/cleanup/main.go
 var cleanupDeployScript embed.FS
@@ -152,7 +159,8 @@ tmp
 optimize/*
 public/styles.css
 template.yaml
-samconfig.toml`
+samconfig.toml
+Dockerfile`
 
 var rootDirs = []string{
 	"public",
@@ -189,7 +197,7 @@ var cliFiles = map[string]embed.FS{
 	".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml": templateCustomDomainWithArnYaml,
 	".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml":          templateCustomDomainYaml,
 	".gothicCli/buildSamTemplate/templates/template-default.yaml":                templateDefaultYaml,
-	".gothicCli/buildSamTemplate/samconfig-template.toml":                        samConfigTom,
+	".gothicCli/buildSamTemplate/templates/samconfig-template.toml":              samConfigTom,
 	".gothicCli/buildSamTemplate/main.go":                                        buildSamTemplateScript,
 	".gothicCli/buildSamTemplate/templates/Dockerfile-template":                  dockerFile,
 	".gothicCli/buildSamTemplate/cleanup/main.go":                                cleanupDeployScript,
@@ -244,6 +252,7 @@ var utilFiles = map[string]embed.FS{
 }
 
 func main() {
+	currentRuntime := runtime.GOOS
 	initCmd := flag.Bool("init", false, "Initialize project files and directories")
 	buildCmd := flag.String("build", "", "Build project (options: page, static-page, isr-page, api-route, isr-api-route, component, isr-component, lazy-load-component)")
 	helpCmd := flag.Bool("help", false, "Display help information")
@@ -262,7 +271,7 @@ func main() {
 			return
 		}
 
-		if err := initializeProject(projectName, goModName); err != nil {
+		if err := initializeProject(projectName, goModName, currentRuntime); err != nil {
 			fmt.Printf("Error initializing the project: %v\n", err)
 		} else {
 			installRequiredLibs()
@@ -295,7 +304,7 @@ func installRequiredLibs() {
 }
 
 // Function to create directories and files
-func initializeProject(projectName string, goModName string) error {
+func initializeProject(projectName string, goModName string, currentRuntime string) error {
 	upperId, err := shortid.Generate()
 	if err != nil {
 		fmt.Println("Error generating short ID:", err)
@@ -330,10 +339,40 @@ func initializeProject(projectName string, goModName string) error {
 		}
 	}
 
+	// Create Tailwind with special permissions for execution based on OS
+	switch currentRuntime {
+	case "linux":
+		data, _ := fs.ReadFile(tailwindCSSLinux, "tailwindcss-linux")
+		// Write the file with executable permissions (0755)
+		if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
+
+			return fmt.Errorf("error creating file %s: %w", "tailwindcss", err)
+		}
+	case "darwin":
+		data, _ := fs.ReadFile(tailwindCSSMac, "tailwindcss-mac")
+		// Write the file with executable permissions (0755)
+		if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
+
+			return fmt.Errorf("error creating file %s: %w", "tailwindcss", err)
+		}
+	case "windows":
+		data, _ := fs.ReadFile(tailwindCSSWindows, "tailwindcss-windows.exe")
+		// Write the file with executable permissions (0755)
+		if err := os.WriteFile("tailwindcss.exe", data, 0755); err != nil {
+
+			return fmt.Errorf("error creating file %s: %w", "tailwindcss", err)
+		}
+	default:
+		fmt.Println("Unknown OS.")
+	}
+
 	// Create dot files (embed api wont let dots on files)
-	go func() {
+	go func(currentRuntime string) {
 		os.WriteFile(".air.toml", []byte(airToml), 0644)
-	}()
+		if currentRuntime == "windows" {
+			replaceOnFile("./tailwindcss", "./tailwindcss.exe", ".air.toml")
+		}
+	}(currentRuntime)
 
 	go func(appId string) {
 
@@ -360,14 +399,6 @@ func initializeProject(projectName string, goModName string) error {
 		return fmt.Errorf("error creating file %s: %w", "main.go", err)
 	}
 
-	// Create Tailwind with special permissions for execution
-	data, _ := fs.ReadFile(tailwindCSS, "tailwindcss")
-	// Write the file with executable permissions (0755)
-	if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
-
-		return fmt.Errorf("error creating file %s: %w", "tailwindcss", err)
-	}
-
 	if err := createFiles(cliFiles); err != nil {
 		return err
 	}
@@ -376,6 +407,9 @@ func initializeProject(projectName string, goModName string) error {
 	}
 	if err := createFiles(rootFiles); err != nil {
 		return err
+	}
+	if currentRuntime == "windows" {
+		replaceOnFile("./tailwindcss", "./tailwindcss.exe", "makefile")
 	}
 	if err := createFiles(apiFiles); err != nil {
 		return err

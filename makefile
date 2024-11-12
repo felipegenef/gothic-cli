@@ -1,9 +1,8 @@
-STAGE ?= default
+STAGE ?= dev
 
 # Commands
 TEMPL_CMD = templ generate
 GENERATE_SAM_TEMPLATE_CMD = go run .gothicCli/buildSamTemplate/main.go --stage $(STAGE)
-CLEANUP_DEPLOY_FILES = go run .gothicCli/buildSamTemplate/cleanup/main.go
 TAILWIND_CMD = ./tailwindcss -i src/css/app.css -o public/styles.css  --minify
 SAM_BUILD_CMD = go run .gothicCli/sam/main.go --action build
 SAM_DEPLOY_CMD = go run .gothicCli/sam/main.go --action deploy --stage $(STAGE)
@@ -25,13 +24,11 @@ deploy:
 	$(SETUP_OPTIMIZE_CMD)
 	${OPTIMIZE_CMD}
 	$(AWS_CP_CMD)
-	${CLEANUP_DEPLOY_FILES}
 
 delete: 
 	$(GENERATE_SAM_TEMPLATE_CMD)
 	$(AWS_RM_CMD)
 	$(SAM_DELETE_CMD)
-	${CLEANUP_DEPLOY_FILES}
 
 # Runs and watches your golang app
 serve-app:

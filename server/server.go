@@ -1,7 +1,6 @@
 package server
 
 import (
-	"embed"
 	"log"
 	"log/slog"
 	"net/http"
@@ -16,8 +15,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-//go:embed public
-var FS embed.FS
 var isLocal bool
 
 func startServer() {
@@ -27,6 +24,23 @@ func startServer() {
 	localServe := os.Getenv("LOCAL_SERVE")
 	isLocal = len(localServe) > 0 && localServe == "true"
 	revalidateLocalTime := time.Now()
+
+	/**
+	*                              Static Content Middleware
+	*
+	* This will attach CloudFront Cache-Control header to your page or component. This way
+	* it will be cached on every edge location to be delivered faster. Current cache ttl is
+	* set to CloudFront max supported value 31536000 seconds or 1 year, but you can customize
+	* it as you wish.
+	*
+	*
+	 */
+	staticContentMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "max-age=31536000")
+			next.ServeHTTP(w, r)
+		})
+	}
 
 	/**
 	*                              Public assets folder
@@ -42,22 +56,41 @@ func startServer() {
 	 */
 	if isLocal {
 		slog.Info("application serving local public folder")
-		router.Handle("/*", http.FileServer(http.FS(FS)))
+		router.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("./public/"))))
 	}
 
-	/**
-	*                         Page routes
-	*
-	* Here is where you serve your page routes.You can add how many as you want.
-	* Just render and serve them as html with templ templating as shown below.
-	* For more info check templ documentation:
-	*
-	*                         https://templ.guide/
-	*
-	 */
-	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		handler.Render(r, w, pages.Index())
+	router.Group(func(staticContent chi.Router) {
+		staticContent.Use(staticContentMiddleware) // Apply the static cache middleware for all contents below
+		/**
+		*                      Static Page routes
+		*
+		* Here is where you serve your static page routes. You can add how many as you want.
+		* Just render and serve them as html with templ templating as shown below.
+		* For more info check templ documentation:
+		*
+		*                         https://templ.guide/
+		*
+		 */
+		staticContent.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			handler.Render(r, w, pages.Index())
+		})
+
+		/**
+		*                            Static Component ROUTES
+		*
+		* Here is where you serve your static component routes. You can add how many as you want.
+		* Just render and serve them as html with templ templating as shown below.
+		* For more info check templ documentation:
+		*
+		*                         https://templ.guide/
+		*
+		*
+		 */
+		staticContent.Get("/helloWorld", func(w http.ResponseWriter, r *http.Request) {
+			handler.Render(r, w, components.HelloWorld())
+		})
 	})
+
 	/**
 	*                              ISR Page Example
 	*
@@ -88,8 +121,24 @@ func startServer() {
 		}
 
 	})
+
 	/**
-	*                            Component ROUTES
+	*                         Dynamic Page routes
+	*
+	* Here is where you serve your dynamic page routes. You can add how many as you want.
+	* Just render and serve them as html with templ templating as shown below.
+	* For more info check templ documentation:
+	*
+	*                         https://templ.guide/
+	*
+	 */
+
+	router.Get("/dynamicPage", func(w http.ResponseWriter, r *http.Request) {
+		handler.Render(r, w, pages.Index())
+	})
+
+	/**
+	*                          Dynamic Component ROUTES
 	*
 	* For HTMX to work, you need to add routes with the desired behaviour
 	* of your application. For more info check HTMX docummentation:
@@ -111,7 +160,7 @@ func startServer() {
 	*
 	*
 	 */
-	router.Get("/helloWorld", api.HelloWorld)
+	router.Get("/api/helloWorld", api.HelloWorld)
 
 	port := os.Getenv("HTTP_LISTEN_ADDR")
 	slog.Info("application running", "port", port)

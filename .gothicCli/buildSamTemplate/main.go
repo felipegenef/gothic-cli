@@ -66,7 +66,7 @@ func main() {
 
 	// Replace the project name in all files
 	filePaths := []string{
-		".gothicCli/buildSamTemplate/samconfig-template.toml",
+		".gothicCli/buildSamTemplate/templates/samconfig-template.toml",
 		".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml",
 		".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml",
 		".gothicCli/buildSamTemplate/templates/template-default.yaml",
@@ -79,8 +79,8 @@ func main() {
 	}
 
 	// Replace the region
-	if err := replaceInFile("regionReplacerString", config.Deploy.Region, ".gothicCli/buildSamTemplate/samconfig-template.toml"); err != nil {
-		log.Fatalf("Error replacing region in file %s: %w", ".gothicCli/buildSamTemplate/samconfig-template.toml", err)
+	if err := replaceInFile("regionReplacerString", config.Deploy.Region, ".gothicCli/buildSamTemplate/templates/samconfig-template.toml"); err != nil {
+		log.Fatalf("Error replacing region in file %s: %w", ".gothicCli/buildSamTemplate/templates/samconfig-template.toml", err)
 	}
 
 	// Check if a custom domain is needed
@@ -123,7 +123,7 @@ func main() {
 	}
 
 	copyFile(".gothicCli/buildSamTemplate/templates/Dockerfile-template", "Dockerfile")
-	copyFile(".gothicCli/buildSamTemplate/samconfig-template.toml", "samconfig.toml")
+	copyFile(".gothicCli/buildSamTemplate/templates/samconfig-template.toml", "samconfig.toml")
 	// Replace the region
 	if err := replaceInFile("regionReplacerString", config.Deploy.Region, "samconfig.toml"); err != nil {
 		log.Fatalf("Error replacing region in file %s: %w", "samconfig.toml", err)

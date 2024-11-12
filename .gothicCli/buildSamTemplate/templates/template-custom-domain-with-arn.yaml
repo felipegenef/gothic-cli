@@ -235,3 +235,6 @@ Outputs:
   CloudFrontCustomDomainName:
     Description: "The CloudFront Distribution Domain Name"
     Value: !FindInMap [ StagesMap, !Ref Stage, customDomain ]
+  CloudFrontId:
+    Description: "The CloudFront Distribution Id"
+    Value: !Ref CloudFrontDistribution

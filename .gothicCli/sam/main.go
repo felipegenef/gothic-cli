@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	gothicCliShared "github.com/felipegenef/gothic-cli/.gothicCli"
 )
@@ -53,6 +56,8 @@ func main() {
 		if err := samDeployCMD.Run(); err != nil {
 			log.Fatalf("Error deploying app:%v", err)
 		}
+		defer cleanupCache(config, stageValue)
+		defer runCleanUp()
 
 	case "delete":
 		samDeleteCMD := exec.Command("sam", "delete", "--stack-name", config.ProjectName+"-"+stageValue, "--profile", config.Deploy.Profile)
@@ -64,6 +69,7 @@ func main() {
 		if err := samDeleteCMD.Run(); err != nil {
 			log.Fatalf("Error deleting app:%v", err)
 		}
+		defer runCleanUp()
 	case "build":
 		samBuildCMD := exec.Command("sam", "build")
 		samBuildCMD.Stdout = os.Stdout
@@ -77,5 +83,41 @@ func main() {
 
 	default:
 		log.Fatalf("Invalid action specified: %s. Use 'deploy', 'delete' or 'build'.", *action)
+	}
+}
+
+func cleanupCache(config gothicCliShared.Config, stage string) {
+	// Execute the command to get the CloudFront distribution ID
+	getDistributionIdCMD := exec.Command("aws", "cloudformation", "describe-stacks", "--stack-name", config.ProjectName+"-"+stage, "--query", "Stacks[0].Outputs[?OutputKey=='CloudFrontId'].OutputValue", "--output", "text", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
+
+	// Capture the output of the command
+	var out bytes.Buffer
+	getDistributionIdCMD.Stdout = &out
+	if err := getDistributionIdCMD.Run(); err != nil {
+		log.Fatalf("Error getting CloudFront Id: %v", err)
+	}
+
+	// The result of the command will be the CloudFront distribution ID
+	distributionId := strings.TrimSpace(out.String()) // Remove any extra spaces
+	if distributionId == "" {
+		log.Fatal("CloudFront ID not found")
+	}
+
+	// Now, use the distribution ID in the command to create the invalidation
+	cleanCachesCmd := exec.Command("aws", "cloudfront", "create-invalidation", "--distribution-id", distributionId, "--paths", "/*", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
+
+	// Execute the cache cleanup command
+	if err := cleanCachesCmd.Run(); err != nil {
+		log.Fatalf("Error cleaning up deploy files: %v", err)
+	}
+
+	// Print the distribution ID and confirm the cache cleanup
+	fmt.Printf("Successfully reset CloudFront cache for distribution: %s\n", distributionId)
+}
+
+func runCleanUp() {
+	cleanUpCMD := exec.Command("go", "run", ".gothicCli/buildSamTemplate/cleanup/main.go")
+	if err := cleanUpCMD.Run(); err != nil {
+		log.Fatalf("Error cleaning up deploy files: %v", err)
 	}
 }

@@ -215,3 +215,6 @@ Outputs:
   GothServerLambdaURL:
     Description: "Lambda function url to access server"
     Value: !GetAtt GothServerUrl.FunctionUrl
+  CloudFrontId:
+    Description: "The CloudFront Distribution Id"
+    Value: !Ref CloudFrontDistribution

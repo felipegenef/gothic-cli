@@ -1,30 +1,29 @@
 package layouts
 
+/**
+*                              Layout creation
+*
+* If you have pages that have some HTML that does not change consider creating layouts
+* to optimize your developer experience and codebase quality. Here is one example of
+* how to implement a page layout and pass children components to it.
+* For more information check out templ dcumentation:
+*                              https://templ.guide/
+*
+*
+ */
 
-	/**
-	*                              Layout creation
-	*
-	* If you have pages that have some HTML that does not change consider creating layouts
-	* to optimize your developer experience and codebase quality. Here is one example of
-	* how to implement a page layout and pass children components to it.
-	* For more information check out templ dcumentation:
-	*                              https://templ.guide/
-	*
-	*
-	*/
 templ PageLayout() {
 	<!DOCTYPE html>
 	<html lang="en" data-theme="dark">
 		<head>
 			<title>GOTHIC APP</title>
 			<link rel="icon" type="image/x-icon" href="/public/favicon.ico"/>
-			<link rel="shortcut icon" href="/public/favicon.ico">
+			<link rel="shortcut icon" href="/public/favicon.ico"/>
 			<meta charset="UTF-8"/>
 			<meta name="description" content="Landing page for Gothic CLI with link to the official docs"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<link rel="stylesheet" href="/public/styles.css"/>
-			<script src="https://unpkg.com/htmx.org@1.9.9" defer></script>
-
+			<script src="https://unpkg.com/htmx.org@2.0.3" integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq" crossorigin="anonymous"></script>
 		</head>
 		<body class="antialiased flex flex-col justify-center items-center w-screen h-screen bg-black p-3">
 			{ children... }
