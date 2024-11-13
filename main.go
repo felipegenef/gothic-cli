@@ -370,7 +370,8 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 	go func(currentRuntime string) {
 		os.WriteFile(".air.toml", []byte(airToml), 0644)
 		if currentRuntime == "windows" {
-			replaceOnFile("./tailwindcss", "./tailwindcss.exe", ".air.toml")
+			replaceOnFile("./tailwindcss", "tailwindcss.exe", ".air.toml")
+			replaceOnFile("./temp/main", "./temp/main.exe", ".air.toml")
 		}
 	}(currentRuntime)
 
@@ -409,7 +410,7 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 		return err
 	}
 	if currentRuntime == "windows" {
-		replaceOnFile("./tailwindcss", "./tailwindcss.exe", "makefile")
+		replaceOnFile("./tailwindcss", "tailwindcss.exe", "makefile")
 	}
 	if err := createFiles(apiFiles); err != nil {
 		return err
