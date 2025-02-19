@@ -3,7 +3,7 @@ STAGE ?= dev
 # Commands
 TEMPL_CMD = templ generate
 GENERATE_SAM_TEMPLATE_CMD = go run .gothicCli/buildSamTemplate/main.go --stage $(STAGE)
-TAILWIND_CMD = ./tailwindcss -i src/css/app.css -o public/styles.css  --minify
+TAILWIND_CMD = ./{{.TailWindFileName}} -i src/css/app.css -o public/styles.css  --minify
 SAM_BUILD_CMD = go run .gothicCli/sam/main.go --action build
 SAM_DEPLOY_CMD = go run .gothicCli/sam/main.go --action deploy --stage $(STAGE)
 SAM_DELETE_CMD = go run .gothicCli/sam/main.go --action delete --stage $(STAGE)

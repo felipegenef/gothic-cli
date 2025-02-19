@@ -1,4 +1,4 @@
-package server
+{{.MainServerPackageName}}
 
 import (
 	"log"
@@ -7,17 +7,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/felipegenef/gothic-cli/src/api"
-	"github.com/felipegenef/gothic-cli/src/components"
-	"github.com/felipegenef/gothic-cli/src/pages"
-	handler "github.com/felipegenef/gothic-cli/src/utils"
+	"{{.GoModName}}/src/api"
+	"{{.GoModName}}/src/components"
+	"{{.GoModName}}/src/pages"
+	handler "{{.GoModName}}/src/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 )
 
 var isLocal bool
 
-func startServer() {
+func {{.MainServerFunctionName}} {
 	godotenv.Load()
 
 	router := chi.NewMux()

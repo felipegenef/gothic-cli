@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	gothicCliShared "github.com/felipegenef/gothic-cli/.gothicCli"
+	gothicCliShared "{{.GoModName}}/.gothicCli"
 
 	"github.com/chai2010/webp"
 	"github.com/nfnt/resize"

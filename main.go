@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	cli_utils "github.com/felipegenef/gothic-cli/utils"
 	"github.com/teris-io/shortid"
 )
 
@@ -124,8 +125,8 @@ var airToml string = `root = "."
 tmp_dir = "tmp"
 
 [build]
-  bin = "./tmp/main"
-  cmd = "./tailwindcss -i src/css/app.css -o public/styles.css --minify && templ generate && go build -o ./tmp/main main.go"
+  bin = "{{.MainBinaryFileName}}"
+  cmd = "./{{.TailWindFileName}} -i src/css/app.css -o public/styles.css --minify && templ generate && go build -o {{.MainBinaryFileName}} main.go"
     
   delay = 2
   exclude_dir = ["assets", "tmp", "vendor","public"]
@@ -214,8 +215,8 @@ var publicFolderFiles = map[string]embed.FS{
 
 var rootFiles = map[string]embed.FS{
 
-	"go.mod":   goMod,
-	"go.sum":   goSum,
+	// "go.mod":   goMod,
+	// "go.sum":   goSum,
 	"makefile": makeFile,
 
 	"tailwind.config.js": tailwindConfig,
@@ -251,6 +252,18 @@ var utilFiles = map[string]embed.FS{
 	"src/utils/handler.go": utils,
 }
 
+var globalRequiredLibs = []string{"github.com/a-h/templ/cmd/templ", "github.com/air-verse/air"}
+
+var templateFiles = map[string]string{
+	"src/pages/index.templ":                   "src/pages/index.templ",
+	"src/pages/revalidate.templ":              "src/pages/revalidate.templ",
+	".gothicCli/CdnAddOrRemoveAssets/main.go": ".gothicCli/CdnAddOrRemoveAssets/main.go",
+	".gothicCli/sam/main.go":                  ".gothicCli/sam/main.go",
+	".gothicCli/imgOptimization/main.go":      ".gothicCli/imgOptimization/main.go",
+	".gothicCli/buildSamTemplate/main.go":     ".gothicCli/buildSamTemplate/main.go",
+	"gothic-config.json":                      "gothic-config.json",
+}
+
 func main() {
 	currentRuntime := runtime.GOOS
 	initCmd := flag.Bool("init", false, "Initialize project files and directories")
@@ -274,7 +287,7 @@ func main() {
 		if err := initializeProject(projectName, goModName, currentRuntime); err != nil {
 			fmt.Printf("Error initializing the project: %v\n", err)
 		} else {
-			installRequiredLibs()
+			initializeModule(goModName)
 			templ := exec.Command("make", "templ")
 			templ.Run()
 			gitinit := exec.Command("git", "init")
@@ -291,20 +304,43 @@ func main() {
 	}
 
 }
+
+func initializeModule(goModuleName string) {
+	initCmd := exec.Command("go", "mod", "init", goModuleName)
+	initCmd.Stdin = os.Stdin
+	initCmd.Stderr = os.Stderr
+	initCmd.Run()
+	tidyCmd := exec.Command("go", "mod", "tidy")
+	tidyCmd.Stdin = os.Stdin
+	tidyCmd.Stderr = os.Stderr
+	tidyCmd.Run()
+	installRequiredLibs()
+	checkForUpdates()
+}
+
 func installRequiredLibs() {
 	fmt.Println("Installing dependencies...")
-	templInstall := exec.Command("go", "install", "github.com/a-h/templ/cmd/templ@latest")
-	templInstall.Stdin = os.Stdin
-	templInstall.Stderr = os.Stderr
-	templInstall.Run()
-	airInstall := exec.Command("go", "install", "github.com/air-verse/air@latest")
-	airInstall.Stdin = os.Stdin
-	airInstall.Stderr = os.Stderr
-	airInstall.Run()
+	for _, lib := range globalRequiredLibs {
+		cmd := exec.Command("go", "install", lib+"@latest")
+		cmd.Stdin = os.Stdin
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+	}
+}
+
+func checkForUpdates() {
+	fmt.Println("Checking for updates on dependencies...")
+	for _, lib := range globalRequiredLibs {
+		cmd := exec.Command("go", "get", "-u", lib)
+		cmd.Stdin = os.Stdin
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+	}
 }
 
 // Function to create directories and files
 func initializeProject(projectName string, goModName string, currentRuntime string) error {
+	initCmdTemplateInfo := cli_utils.InitCMDTemplateInfo{ProjectName: projectName, GoModName: goModName, MainServerPackageName: "package main", MainServerFunctionName: "main()"}
 	upperId, err := shortid.Generate()
 	if err != nil {
 		fmt.Println("Error generating short ID:", err)
@@ -343,6 +379,8 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 	switch currentRuntime {
 	case "linux":
 		data, _ := fs.ReadFile(tailwindCSSLinux, "tailwindcss-linux")
+		initCmdTemplateInfo.TailWindFileName = "tailwindcss"
+		initCmdTemplateInfo.MainBinaryFileName = "./temp/main"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
 
@@ -350,6 +388,8 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 		}
 	case "darwin":
 		data, _ := fs.ReadFile(tailwindCSSMac, "tailwindcss-mac")
+		initCmdTemplateInfo.TailWindFileName = "tailwindcss"
+		initCmdTemplateInfo.MainBinaryFileName = "./temp/main"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
 
@@ -357,6 +397,8 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 		}
 	case "windows":
 		data, _ := fs.ReadFile(tailwindCSSWindows, "tailwindcss-windows.exe")
+		initCmdTemplateInfo.TailWindFileName = "tailwindcss.exe"
+		initCmdTemplateInfo.MainBinaryFileName = "./temp/main.exe"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss.exe", data, 0755); err != nil {
 
@@ -367,13 +409,10 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 	}
 
 	// Create dot files (embed api wont let dots on files)
-	go func(currentRuntime string) {
+	go func(initCmdTemplateInfo cli_utils.InitCMDTemplateInfo) {
 		os.WriteFile(".air.toml", []byte(airToml), 0644)
-		if currentRuntime == "windows" {
-			replaceOnFile("./tailwindcss", "tailwindcss.exe", ".air.toml")
-			replaceOnFile("./temp/main", "./temp/main.exe", ".air.toml")
-		}
-	}(currentRuntime)
+		cli_utils.ReplaceOnFile(".air.toml", ".air.toml", initCmdTemplateInfo)
+	}(initCmdTemplateInfo)
 
 	go func(appId string) {
 
@@ -390,15 +429,11 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 
 	// Create and replace package on serverfile
 	mainServerData, _ := fs.ReadFile(mainServerFile, "server/server.go")
-	// Replace "package server" with "package main"
-	// To serve this lib we had to change package main on server file
-	replacedpackage := []byte(strings.ReplaceAll(string(mainServerData), "package server", "package main"))
-	modifiedData := []byte(strings.ReplaceAll(string(replacedpackage), "startServer()", "main()"))
-
-	if err := os.WriteFile("main.go", modifiedData, 0644); err != nil {
+	if err := os.WriteFile("main.go", mainServerData, 0644); err != nil {
 
 		return fmt.Errorf("error creating file %s: %w", "main.go", err)
 	}
+	cli_utils.ReplaceOnFile("main.go", "main.go", initCmdTemplateInfo)
 
 	if err := createFiles(cliFiles); err != nil {
 		return err
@@ -409,9 +444,8 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 	if err := createFiles(rootFiles); err != nil {
 		return err
 	}
-	if currentRuntime == "windows" {
-		replaceOnFile("./tailwindcss", "tailwindcss.exe", "makefile")
-	}
+	// Replace tailwind bin name on scripts
+	cli_utils.ReplaceOnFile("makefile", "makefile", initCmdTemplateInfo)
 	if err := createFiles(apiFiles); err != nil {
 		return err
 	}
@@ -431,80 +465,15 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 		return err
 	}
 
-	// Replace project name on all files
+	for templateFilePath, outputPath := range templateFiles {
+		go func(templateFilePath, outputPath string, initCmdTemplateInfo cli_utils.InitCMDTemplateInfo) {
+			err := cli_utils.ReplaceOnFile(templateFilePath, outputPath, initCmdTemplateInfo)
+			if err != nil {
+				fmt.Errorf("error generating file %s: %w", outputPath, err)
+			}
 
-	if err := replaceOnFile("gothic-example", projectName, "makefile"); err != nil {
+		}(templateFilePath, outputPath, initCmdTemplateInfo)
 
-		return fmt.Errorf("error replacing project name to file %s: %w", "makefile", err)
-	}
-
-	// change go module from  github.com/felipegenef/gothic-cli
-
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, "main.go"); err != nil {
-
-		return fmt.Errorf("error replacing go module name to file %s: %w", "main.go", err)
-	}
-
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, "go.mod"); err != nil {
-
-		return fmt.Errorf("error replacing go module name to file %s: %w", "go.mod", err)
-	}
-
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, "src/pages/index.templ"); err != nil {
-
-		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/index.templ", err)
-	}
-
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, "src/pages/revalidate.templ"); err != nil {
-
-		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/revalidate.templ", err)
-	}
-
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, ".gothicCli/CdnAddOrRemoveAssets/main.go"); err != nil {
-
-		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/CdnAddOrRemoveAssets/main.go", err)
-	}
-
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, ".gothicCli/sam/main.go"); err != nil {
-
-		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/sam/main.go", err)
-	}
-
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, ".gothicCli/imgOptimization/main.go"); err != nil {
-
-		return fmt.Errorf("error replacing go module name to file %s: %w", "src/pages/revalidate.templ", err)
-	}
-
-	if err := replaceOnFile("github.com/felipegenef/gothic-cli", goModName, ".gothicCli/buildSamTemplate/main.go"); err != nil {
-
-		return fmt.Errorf("error replacing go module name to file %s: %w", ".gothicCli/buildSamTemplate/main.go", err)
-	}
-
-	if err := replaceOnFile("gothic-example", projectName, "gothic-config.json"); err != nil {
-
-		return fmt.Errorf("error replacing project-name name to file %s: %w", "gothic-config.json", err)
-	}
-
-	if err := replaceOnFile("goModuleNameStringReplacer", goModName, "gothic-config.json"); err != nil {
-
-		return fmt.Errorf("error replacing project-name name to file %s: %w", "gothic-config.json", err)
-	}
-
-	return nil
-}
-
-func replaceOnFile(originalString string, replaceString string, filePath string) error {
-	fileContent, err := os.ReadFile(filePath)
-
-	if err != nil {
-		return err
-	}
-
-	replacedfile := []byte(strings.ReplaceAll(string(fileContent), originalString, replaceString))
-
-	if err := os.WriteFile(filePath, replacedfile, 0644); err != nil {
-
-		return err
 	}
 
 	return nil

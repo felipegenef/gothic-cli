@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	gothicCliShared "github.com/felipegenef/gothic-cli/.gothicCli"
+	gothicCliShared "{{.GoModName}}/.gothicCli"
 )
 
 func main() {
