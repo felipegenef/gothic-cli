@@ -5,7 +5,7 @@ import (
 	"{{.GoModName}}/src/layouts"
 )
 
-templ Index() {
+templ {{.PageName}}() {
 	@layouts.PageLayout() {
 		@components.HelloWorld()
 		<div class="sm:w-[300px] sm:h-[300px] w-[200px] h-[200px] my-10 rounded-full animate-pulse overflow-clip">

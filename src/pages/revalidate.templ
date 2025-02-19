@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-templ Revalidate(currentTime time.Time) {
+templ {{.PageName}}(currentTime time.Time) {
 	@layouts.PageLayout() {
 		<div class="flex flex-col justify-center items-center w-screen h-screen">
 			<h1 class="text-4xl mb-5 text-white">ISR Feature with GOTH APP</h1>

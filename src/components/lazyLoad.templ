@@ -8,7 +8,7 @@ package components
 	*
 */
 
-templ LazyLoad(isFirstLoad bool) {
+templ {{.ComponentName}}(isFirstLoad bool) {
 	if isFirstLoad {
 		<div hx-get="/yourLazyLoadedComponent" hx-trigger="load">
 			<div>Put here your scheleton or first load component for the /yourComponent route</div>

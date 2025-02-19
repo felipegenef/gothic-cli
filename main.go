@@ -2,9 +2,11 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -12,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	gothicCliShared "github.com/felipegenef/gothic-cli/.gothicCli"
 	cli_utils "github.com/felipegenef/gothic-cli/utils"
 	"github.com/teris-io/shortid"
 )
@@ -178,8 +181,6 @@ var utilFiles = map[string]embed.FS{
 var globalRequiredLibs = []string{"github.com/a-h/templ/cmd/templ", "github.com/air-verse/air"}
 
 var templateFiles = map[string]string{
-	"src/pages/index.templ":                   "src/pages/index.templ",
-	"src/pages/revalidate.templ":              "src/pages/revalidate.templ",
 	".gothicCli/CdnAddOrRemoveAssets/main.go": ".gothicCli/CdnAddOrRemoveAssets/main.go",
 	".gothicCli/sam/main.go":                  ".gothicCli/sam/main.go",
 	".gothicCli/imgOptimization/main.go":      ".gothicCli/imgOptimization/main.go",
@@ -209,18 +210,33 @@ func main() {
 
 		if err := initializeProject(projectName, goModName, currentRuntime); err != nil {
 			fmt.Printf("Error initializing the project: %v\n", err)
-		} else {
-			initializeModule(goModName)
-			templ := exec.Command("make", "templ")
-			templ.Run()
-			gitinit := exec.Command("git", "init")
-			gitinit.Run()
-			fmt.Println("Project initialized successfully!")
+			panic(err)
 		}
+		initializeModule(goModName)
+		templ := exec.Command("make", "templ")
+		templ.Run()
+		gitinit := exec.Command("git", "init")
+		gitinit.Run()
+		fmt.Println("Project initialized successfully!")
+
 	} else if *buildCmd != "" {
 		name := promptForBuildName(*buildCmd)
 		if name != "" {
-			handleBuild(*buildCmd, name)
+			// Open the configuration file
+			file, err := os.Open("gothic-config.json")
+			if err != nil {
+				log.Fatalf("Error opening file: %v", err)
+			}
+			defer file.Close()
+			// Create a variable to store the configuration
+			var config gothicCliShared.Config
+			// Decode the JSON from the file
+			decoder := json.NewDecoder(file)
+			err = decoder.Decode(&config)
+			if err != nil {
+				log.Fatalf("Error decoding JSON: %v", err)
+			}
+			handleBuild(*buildCmd, name, config.GoModName)
 		}
 	} else {
 		fmt.Println("Use --init to initialize the project or --build to build a boilerplate example.")
@@ -398,6 +414,30 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 		}(templateFilePath, outputPath, initCmdTemplateInfo)
 
 	}
+	// Pages
+	if err := cli_utils.CreateFromTemplate(srcFolder, "src/pages/revalidate.templ", "src/pages/revalidate.templ", cli_utils.BuildCMDTemplateInfo{PageName: "Revalidate", GoModName: goModName}); err != nil {
+		return err
+	}
+
+	if err := cli_utils.CreateFromTemplate(srcFolder, "src/pages/index.templ", "src/pages/index.templ", cli_utils.BuildCMDTemplateInfo{PageName: "Index", GoModName: goModName}); err != nil {
+		return err
+	}
+	// Components
+	if err := cli_utils.CreateFromTemplate(srcFolder, "src/components/helloWorld.templ", "src/components/helloWorld.templ", cli_utils.BuildCMDTemplateInfo{ComponentName: "HelloWorld", GoModName: goModName}); err != nil {
+		return err
+	}
+
+	if err := cli_utils.CreateFromTemplate(srcFolder, "src/components/lazyLoad.templ", "src/components/lazyLoad.templ", cli_utils.BuildCMDTemplateInfo{ComponentName: "LazyLoad", GoModName: goModName}); err != nil {
+		return err
+	}
+
+	if err := cli_utils.CreateFromTemplate(srcFolder, "src/components/lazyLoad.templ", "src/components/lazyLoad.templ", cli_utils.BuildCMDTemplateInfo{ComponentName: "LazyLoad", GoModName: goModName}); err != nil {
+		return err
+	}
+	// API
+	if err := cli_utils.CreateFromTemplate(srcFolder, "src/api/helloWorld.go", "src/api/helloWorld.go", cli_utils.BuildCMDTemplateInfo{RouteName: "HelloWorld", GoModName: goModName}); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -438,10 +478,17 @@ func createFiles(files map[string]embed.FS) error {
 	return nil
 }
 
-func handleBuild(buildType, name string) error {
+func handleBuild(buildType, name string, goModName string) error {
+	buildCMDTemplateInfo := cli_utils.BuildCMDTemplateInfo{
+		PageName:      name,
+		RouteName:     name,
+		ComponentName: name,
+		GoModName:     goModName,
+	}
 	switch buildType {
 	case "page":
-		if err := buildAndReplace(name, srcFolder, "src/pages/index.templ", "Index", "src/pages/"+name+".templ"); err != nil {
+
+		if err := cli_utils.CreateFromTemplate(srcFolder, "src/pages/index.templ", "src/pages/"+name+".templ", buildCMDTemplateInfo); err != nil {
 			return err
 		}
 
@@ -455,7 +502,7 @@ func handleBuild(buildType, name string) error {
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "Index", name))
 	case "static-page":
 
-		if err := buildAndReplace(name, srcFolder, "src/pages/index.templ", "Index", "src/pages/"+name+".templ"); err != nil {
+		if err := cli_utils.CreateFromTemplate(srcFolder, "src/pages/index.templ", "src/pages/"+name+".templ", buildCMDTemplateInfo); err != nil {
 			return err
 		}
 
@@ -472,7 +519,7 @@ func handleBuild(buildType, name string) error {
 
 	case "isr-page":
 
-		if err := buildAndReplace(name, srcFolder, "src/pages/revalidate.templ", "Revalidate", "src/pages/"+name+".templ"); err != nil {
+		if err := cli_utils.CreateFromTemplate(srcFolder, "src/pages/revalidate.templ", "src/pages/"+name+".templ", buildCMDTemplateInfo); err != nil {
 			return err
 		}
 
@@ -488,7 +535,7 @@ func handleBuild(buildType, name string) error {
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "Revalidate", name))
 	case "api-route":
 
-		if err := buildAndReplace(name, srcFolder, "src/api/helloWorld.go", "HelloWorld", "src/api/"+name+".go"); err != nil {
+		if err := cli_utils.CreateFromTemplate(srcFolder, "src/api/helloWorld.go", "src/api/"+name+".go", buildCMDTemplateInfo); err != nil {
 			return err
 		}
 		templ := exec.Command("make", "templ")
@@ -500,7 +547,7 @@ func handleBuild(buildType, name string) error {
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
 
 	case "isr-api-route":
-		if err := buildAndReplace(name, srcFolder, "src/api/helloWorld.go", "HelloWorld", "src/api/"+name+".go"); err != nil {
+		if err := cli_utils.CreateFromTemplate(srcFolder, "src/api/helloWorld.go", "src/api/"+name+".go", buildCMDTemplateInfo); err != nil {
 			return err
 		}
 
@@ -515,7 +562,7 @@ func handleBuild(buildType, name string) error {
 		templ.Run()
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
 	case "component":
-		if err := buildAndReplace(name, srcFolder, "src/components/helloWorld.templ", "HelloWorld", "src/components/"+name+".templ"); err != nil {
+		if err := cli_utils.CreateFromTemplate(srcFolder, "src/components/helloWorld.templ", "src/components/"+name+".templ", buildCMDTemplateInfo); err != nil {
 			return err
 		}
 		templ := exec.Command("make", "templ")
@@ -528,7 +575,7 @@ func handleBuild(buildType, name string) error {
 
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
 	case "isr-component":
-		if err := buildAndReplace(name, srcFolder, "src/components/helloWorld.templ", "HelloWorld", "src/components/"+name+".templ"); err != nil {
+		if err := cli_utils.CreateFromTemplate(srcFolder, "src/components/helloWorld.templ", "src/components/"+name+".templ", buildCMDTemplateInfo); err != nil {
 			return err
 		}
 		templ := exec.Command("make", "templ")
@@ -543,7 +590,7 @@ func handleBuild(buildType, name string) error {
 
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
 	case "lazy-load-component":
-		if err := buildAndReplace(name, srcFolder, "src/components/lazyLoad.templ", "LazyLoad", "src/components/"+name+".templ"); err != nil {
+		if err := cli_utils.CreateFromTemplate(srcFolder, "src/components/lazyLoad.templ", "src/components/"+name+".templ", buildCMDTemplateInfo); err != nil {
 			return err
 		}
 		templ := exec.Command("make", "templ")
@@ -567,19 +614,7 @@ func handleBuild(buildType, name string) error {
 
 	return nil
 }
-func buildAndReplace(name string, fileTemplate embed.FS, fileTemplatePath string, stringToReplace string, outputFilePath string) error {
-	data, err := fs.ReadFile(fileTemplate, fileTemplatePath)
-	if err != nil {
-		return err
-	}
-	replacedData := []byte(strings.ReplaceAll(string(data), stringToReplace, name))
 
-	if err := os.WriteFile(outputFilePath, replacedData, 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
 func displayHelp() {
 	fmt.Println("Usage:")
 	fmt.Println("  --init                     Initialize project files and directories.")
