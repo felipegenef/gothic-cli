@@ -16,26 +16,29 @@ import (
 	"github.com/teris-io/shortid"
 )
 
-//go:embed .gothicCli/buildSamTemplate/templates/Dockerfile-template
-var dockerFile embed.FS
+//go:embed .gothicCli
+var gothicCliFolder embed.FS
 
-//go:embed go.mod
-var goMod embed.FS
+//go:embed server
+var serverFolder embed.FS
 
-//go:embed go.sum
-var goSum embed.FS
+//go:embed public
+var publicFolder embed.FS
 
-//go:embed server/server.go
-var mainServerFile embed.FS
+//go:embed src
+var srcFolder embed.FS
 
 //go:embed makefile
 var makeFile embed.FS
 
-//go:embed .gothicCli/buildSamTemplate/templates/samconfig-template.toml
-var samConfigTom embed.FS
-
 //go:embed tailwind.config.js
 var tailwindConfig embed.FS
+
+//go:embed README.md
+var readme embed.FS
+
+//go:embed gothic-config.json
+var goticConfig embed.FS
 
 //go:embed tailwindcss-linux
 var tailwindCSSLinux embed.FS
@@ -45,81 +48,6 @@ var tailwindCSSWindows embed.FS
 
 //go:embed tailwindcss-mac
 var tailwindCSSMac embed.FS
-
-//go:embed .gothicCli/buildSamTemplate/cleanup/main.go
-var cleanupDeployScript embed.FS
-
-//go:embed .gothicCli/sam/main.go
-var samDeployScript embed.FS
-
-//go:embed .gothicCli/CdnAddOrRemoveAssets/main.go
-var CdnAddOrRemoveAssetsScript embed.FS
-
-//go:embed .gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml
-var templateCustomDomainWithArnYaml embed.FS
-
-//go:embed .gothicCli/buildSamTemplate/templates/template-custom-domain.yaml
-var templateCustomDomainYaml embed.FS
-
-//go:embed .gothicCli/buildSamTemplate/templates/template-default.yaml
-var templateDefaultYaml embed.FS
-
-//go:embed .gothicCli/buildSamTemplate/main.go
-var buildSamTemplateScript embed.FS
-
-//go:embed README.md
-var readme embed.FS
-
-//go:embed .gothicCli/HotReload/main.go
-var hotReloadScript embed.FS
-
-//go:embed .gothicCli/imgOptimization/setup/main.go
-var imgOptimizationSetupScript embed.FS
-
-//go:embed .gothicCli/imgOptimization/main.go
-var imgOptimizationScript embed.FS
-
-//go:embed .gothicCli/shared.go
-var sharedUtils embed.FS
-
-//go:embed public/imageExample/blurred.jpeg
-var imgOptimizationBlurredImg embed.FS
-
-//go:embed public/imageExample/original.jpeg
-var imgOptimizationOriginalImg embed.FS
-
-//go:embed public/favicon.ico
-var favicon embed.FS
-
-//go:embed src/api/helloWorld.go
-var apiExample embed.FS
-
-//go:embed src/components/helloWorld.templ
-var helloWorldExample embed.FS
-
-//go:embed src/components/lazyLoad.templ
-var lazyLoadExample embed.FS
-
-//go:embed src/components/optimizedImage.templ
-var optimizeImageExample embed.FS
-
-//go:embed src/css/app.css
-var appCSS embed.FS
-
-//go:embed src/layouts/layout.templ
-var layout embed.FS
-
-//go:embed src/pages/index.templ
-var indexPage embed.FS
-
-//go:embed src/pages/revalidate.templ
-var revalidatePage embed.FS
-
-//go:embed src/utils/handler.go
-var utils embed.FS
-
-//go:embed gothic-config.json
-var goticConfig embed.FS
 
 var airToml string = `root = "."
 tmp_dir = "tmp"
@@ -192,64 +120,59 @@ var publicDirs = []string{
 }
 
 var cliFiles = map[string]embed.FS{
-	".gothicCli/HotReload/main.go":       hotReloadScript,
-	".gothicCli/imgOptimization/main.go": imgOptimizationScript,
-	".gothicCli/shared.go":               sharedUtils,
-	".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml": templateCustomDomainWithArnYaml,
-	".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml":          templateCustomDomainYaml,
-	".gothicCli/buildSamTemplate/templates/template-default.yaml":                templateDefaultYaml,
-	".gothicCli/buildSamTemplate/templates/samconfig-template.toml":              samConfigTom,
-	".gothicCli/buildSamTemplate/main.go":                                        buildSamTemplateScript,
-	".gothicCli/buildSamTemplate/templates/Dockerfile-template":                  dockerFile,
-	".gothicCli/buildSamTemplate/cleanup/main.go":                                cleanupDeployScript,
-	".gothicCli/CdnAddOrRemoveAssets/main.go":                                    CdnAddOrRemoveAssetsScript,
-	".gothicCli/sam/main.go":                                                     samDeployScript,
-	".gothicCli/imgOptimization/setup/main.go":                                   imgOptimizationSetupScript,
+	".gothicCli/HotReload/main.go":       gothicCliFolder,
+	".gothicCli/imgOptimization/main.go": gothicCliFolder,
+	".gothicCli/shared.go":               gothicCliFolder,
+	".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml": gothicCliFolder,
+	".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml":          gothicCliFolder,
+	".gothicCli/buildSamTemplate/templates/template-default.yaml":                gothicCliFolder,
+	".gothicCli/buildSamTemplate/templates/samconfig-template.toml":              gothicCliFolder,
+	".gothicCli/buildSamTemplate/main.go":                                        gothicCliFolder,
+	".gothicCli/buildSamTemplate/templates/Dockerfile-template":                  gothicCliFolder,
+	".gothicCli/buildSamTemplate/cleanup/main.go":                                gothicCliFolder,
+	".gothicCli/CdnAddOrRemoveAssets/main.go":                                    gothicCliFolder,
+	".gothicCli/sam/main.go":                                                     gothicCliFolder,
+	".gothicCli/imgOptimization/setup/main.go":                                   gothicCliFolder,
 }
 
 var publicFolderFiles = map[string]embed.FS{
-	"public/imageExample/blurred.jpeg":  imgOptimizationBlurredImg,
-	"public/imageExample/original.jpeg": imgOptimizationOriginalImg,
-	"public/favicon.ico":                favicon,
+	"public/imageExample/blurred.jpeg":  publicFolder,
+	"public/imageExample/original.jpeg": publicFolder,
+	"public/favicon.ico":                publicFolder,
 }
 
 var rootFiles = map[string]embed.FS{
-
-	// "go.mod":   goMod,
-	// "go.sum":   goSum,
-	"makefile": makeFile,
-
+	"makefile":           makeFile,
 	"tailwind.config.js": tailwindConfig,
-
 	"README.md":          readme,
 	"gothic-config.json": goticConfig,
 }
 
 var apiFiles = map[string]embed.FS{
-	"src/api/helloWorld.go": apiExample,
+	"src/api/helloWorld.go": srcFolder,
 }
 
 var componentFiles = map[string]embed.FS{
-	"src/components/helloWorld.templ":     helloWorldExample,
-	"src/components/optimizedImage.templ": optimizeImageExample,
-	"src/components/lazyLoad.templ":       lazyLoadExample,
+	"src/components/helloWorld.templ":     srcFolder,
+	"src/components/optimizedImage.templ": srcFolder,
+	"src/components/lazyLoad.templ":       srcFolder,
 }
 
 var cssFiles = map[string]embed.FS{
-	"src/css/app.css": appCSS,
+	"src/css/app.css": srcFolder,
 }
 
 var layoutFiles = map[string]embed.FS{
-	"src/layouts/layout.templ": layout,
+	"src/layouts/layout.templ": srcFolder,
 }
 
 var pageFiles = map[string]embed.FS{
-	"src/pages/index.templ":      indexPage,
-	"src/pages/revalidate.templ": revalidatePage,
+	"src/pages/index.templ":      srcFolder,
+	"src/pages/revalidate.templ": srcFolder,
 }
 
 var utilFiles = map[string]embed.FS{
-	"src/utils/handler.go": utils,
+	"src/utils/handler.go": srcFolder,
 }
 
 var globalRequiredLibs = []string{"github.com/a-h/templ/cmd/templ", "github.com/air-verse/air"}
@@ -428,7 +351,7 @@ func initializeProject(projectName string, goModName string, currentRuntime stri
 	}()
 
 	// Create and replace package on serverfile
-	mainServerData, _ := fs.ReadFile(mainServerFile, "server/server.go")
+	mainServerData, _ := fs.ReadFile(serverFolder, "server/server.go")
 	if err := os.WriteFile("main.go", mainServerData, 0644); err != nil {
 
 		return fmt.Errorf("error creating file %s: %w", "main.go", err)
@@ -518,7 +441,7 @@ func createFiles(files map[string]embed.FS) error {
 func handleBuild(buildType, name string) error {
 	switch buildType {
 	case "page":
-		if err := buildAndReplace(name, indexPage, "src/pages/index.templ", "Index", "src/pages/"+name+".templ"); err != nil {
+		if err := buildAndReplace(name, srcFolder, "src/pages/index.templ", "Index", "src/pages/"+name+".templ"); err != nil {
 			return err
 		}
 
@@ -532,7 +455,7 @@ func handleBuild(buildType, name string) error {
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "Index", name))
 	case "static-page":
 
-		if err := buildAndReplace(name, indexPage, "src/pages/index.templ", "Index", "src/pages/"+name+".templ"); err != nil {
+		if err := buildAndReplace(name, srcFolder, "src/pages/index.templ", "Index", "src/pages/"+name+".templ"); err != nil {
 			return err
 		}
 
@@ -549,7 +472,7 @@ func handleBuild(buildType, name string) error {
 
 	case "isr-page":
 
-		if err := buildAndReplace(name, revalidatePage, "src/pages/revalidate.templ", "Revalidate", "src/pages/"+name+".templ"); err != nil {
+		if err := buildAndReplace(name, srcFolder, "src/pages/revalidate.templ", "Revalidate", "src/pages/"+name+".templ"); err != nil {
 			return err
 		}
 
@@ -565,7 +488,7 @@ func handleBuild(buildType, name string) error {
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "Revalidate", name))
 	case "api-route":
 
-		if err := buildAndReplace(name, apiExample, "src/api/helloWorld.go", "HelloWorld", "src/api/"+name+".go"); err != nil {
+		if err := buildAndReplace(name, srcFolder, "src/api/helloWorld.go", "HelloWorld", "src/api/"+name+".go"); err != nil {
 			return err
 		}
 		templ := exec.Command("make", "templ")
@@ -577,7 +500,7 @@ func handleBuild(buildType, name string) error {
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
 
 	case "isr-api-route":
-		if err := buildAndReplace(name, apiExample, "src/api/helloWorld.go", "HelloWorld", "src/api/"+name+".go"); err != nil {
+		if err := buildAndReplace(name, srcFolder, "src/api/helloWorld.go", "HelloWorld", "src/api/"+name+".go"); err != nil {
 			return err
 		}
 
@@ -592,7 +515,7 @@ func handleBuild(buildType, name string) error {
 		templ.Run()
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
 	case "component":
-		if err := buildAndReplace(name, helloWorldExample, "src/components/helloWorld.templ", "HelloWorld", "src/components/"+name+".templ"); err != nil {
+		if err := buildAndReplace(name, srcFolder, "src/components/helloWorld.templ", "HelloWorld", "src/components/"+name+".templ"); err != nil {
 			return err
 		}
 		templ := exec.Command("make", "templ")
@@ -605,7 +528,7 @@ func handleBuild(buildType, name string) error {
 
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
 	case "isr-component":
-		if err := buildAndReplace(name, helloWorldExample, "src/components/helloWorld.templ", "HelloWorld", "src/components/"+name+".templ"); err != nil {
+		if err := buildAndReplace(name, srcFolder, "src/components/helloWorld.templ", "HelloWorld", "src/components/"+name+".templ"); err != nil {
 			return err
 		}
 		templ := exec.Command("make", "templ")
@@ -620,7 +543,7 @@ func handleBuild(buildType, name string) error {
 
 		fmt.Println(strings.ReplaceAll(originalRouteExample, "HelloWorld", name))
 	case "lazy-load-component":
-		if err := buildAndReplace(name, lazyLoadExample, "src/components/lazyLoad.templ", "LazyLoad", "src/components/"+name+".templ"); err != nil {
+		if err := buildAndReplace(name, srcFolder, "src/components/lazyLoad.templ", "LazyLoad", "src/components/"+name+".templ"); err != nil {
 			return err
 		}
 		templ := exec.Command("make", "templ")
