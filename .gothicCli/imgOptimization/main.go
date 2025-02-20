@@ -11,9 +11,10 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	webp "golang.org/x/image/webp"
+
 	gothicCliShared "{{.GoModName}}/.gothicCli"
 
-	"github.com/chai2010/webp"
 	"github.com/nfnt/resize"
 )
 
@@ -21,7 +22,7 @@ func main() {
 	inputDir := "./optimize"
 	outputDir := "./public"
 	downloadResizeCMD := exec.Command("go", "mod", "download", "github.com/nfnt/resize")
-	downloadWebpCMD := exec.Command("go", "mod", "download", "github.com/chai2010/webp")
+	downloadWebpCMD := exec.Command("go", "mod", "download", "golang.org/x/image")
 	// Make sure needed packages have been downloaded
 	if err := downloadResizeCMD.Run(); err != nil {
 		log.Fatalf("Error executing add command: %v", err)
@@ -119,21 +120,6 @@ func main() {
 			}
 			defer originalFile.Close()
 
-			switch ext {
-			case ".png":
-				if err := png.Encode(originalFile, img); err != nil {
-					fmt.Printf("Error saving original PNG image %s: %v\n", originalPath, err)
-				}
-			case ".jpg", ".jpeg":
-				if err := jpeg.Encode(originalFile, img, &jpeg.Options{Quality: 100}); err != nil {
-					fmt.Printf("Error saving original JPEG image %s: %v\n", originalPath, err)
-				}
-			case ".webp":
-				if err := webp.Encode(originalFile, img, &webp.Options{Quality: 100}); err != nil {
-					fmt.Printf("Error saving original WebP image %s: %v\n", originalPath, err)
-				}
-			}
-
 			// Resize the image to 20% of its original dimensions
 			resizedImg := resize.Resize(newWidth, newHeight, img, resize.Lanczos3)
 
@@ -146,13 +132,28 @@ func main() {
 			}
 			defer blurredFile.Close()
 
-			if ext == ".webp" {
-				if err := webp.Encode(blurredFile, resizedImg, &webp.Options{Quality: 20}); err != nil {
-					fmt.Printf("Error saving blurred WebP image %s: %v\n", blurredPath, err)
+			switch ext {
+			case ".png":
+				if err := png.Encode(originalFile, img); err != nil {
+					fmt.Printf("Error saving original PNG image %s: %v\n", originalPath, err)
 				}
-			} else {
+				if err := png.Encode(blurredFile, resizedImg); err != nil {
+					fmt.Printf("Error saving blurred PNG image %s: %v\n", originalPath, err)
+				}
+
+			case ".jpg", ".jpeg":
+				if err := jpeg.Encode(originalFile, img, &jpeg.Options{Quality: 100}); err != nil {
+					fmt.Printf("Error saving original JPEG image %s: %v\n", originalPath, err)
+				}
 				if err := jpeg.Encode(blurredFile, resizedImg, &jpeg.Options{Quality: 20}); err != nil {
 					fmt.Printf("Error saving blurred image %s: %v\n", blurredPath, err)
+				}
+			case ".webp":
+				if err := png.Encode(originalFile, img); err != nil {
+					fmt.Printf("Error saving original WebP image %s: %v\n", originalPath, err)
+				}
+				if err := png.Encode(blurredFile, resizedImg); err != nil {
+					fmt.Printf("Error saving blurred WebP image %s: %v\n", originalPath, err)
 				}
 			}
 		} else {

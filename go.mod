@@ -8,3 +8,5 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 )
+
+require golang.org/x/image v0.24.0 // indirect

@@ -24,7 +24,7 @@ The following libraries and tools are included by default:
 - [AIR](https://github.com/air-verse/air) for hot reloading
 - [ShortId](github.com/teris-io/shortid) for creating unique names for stacks and Lambda functions
 - [TailwindCSS](https://tailwindcss.com/) for styling
-- [Chai Webp](github.com/chai2010/webp) for WebP image optimization
+- [X image](golang.org/x/image) for WebP image optimization
 - [Nfnt Resize](github.com/nfnt/resize) for image resizing and optimization
 - [HTMX](https://htmx.org/) for handling HTML events and DOM updates
 - [Templ](https://templ.guide/) for HTML page templating
