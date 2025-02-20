@@ -78,11 +78,6 @@ func main() {
 		}
 	}
 
-	// Replace the region
-	if err := replaceInFile("regionReplacerString", config.Deploy.Region, ".gothicCli/buildSamTemplate/templates/samconfig-template.toml"); err != nil {
-		log.Fatalf("Error replacing region in file %s: %w", ".gothicCli/buildSamTemplate/templates/samconfig-template.toml", err)
-	}
-
 	// Check if a custom domain is needed
 	if config.Deploy.CustomDomain {
 		if config.Deploy.Region != "us-east-1" && envConfig.CertificateArn == nil {
