@@ -1,4 +1,4 @@
-package cli_utils
+package templates
 
 import (
 	"embed"
@@ -27,7 +27,16 @@ type BuildCMDTemplateInfo struct {
 	GoModName     string
 }
 
-func ReplaceOnFile(templateFilePath string, outputFilePath string, templateStruct InitCMDTemplateInfo) error {
+type Templates struct {
+	InitCMDTemplateInfo  InitCMDTemplateInfo
+	BuildCMDTemplateInfo BuildCMDTemplateInfo
+}
+
+func NewCLITemplate() Templates {
+	return Templates{}
+}
+
+func (t *Templates) UpdateFromTemplate(templateFilePath string, outputFilePath string, templateStruct interface{}) error {
 	templateFileData, err := os.ReadFile(templateFilePath)
 	if err != nil {
 		return err
@@ -48,7 +57,7 @@ func ReplaceOnFile(templateFilePath string, outputFilePath string, templateStruc
 	return nil
 }
 
-func CreateFromTemplate(fileTemplate embed.FS, templateFilePath string, outputFilePath string, templateStruct BuildCMDTemplateInfo) error {
+func (t *Templates) CreateFromTemplate(fileTemplate embed.FS, templateFilePath string, outputFilePath string, templateStruct interface{}) error {
 	templateBytes, err := fs.ReadFile(fileTemplate, templateFilePath)
 	if err != nil {
 		return err
