@@ -82,105 +82,106 @@ template.yaml
 samconfig.toml
 Dockerfile`
 
+var data = gothicCli.GothicCliData{
+	PublicFolderAssets: map[string]embed.FS{
+		"public/imageExample/blurred.jpeg":  publicFolder,
+		"public/imageExample/original.jpeg": publicFolder,
+		"public/favicon.ico":                publicFolder,
+	},
+	InitialFiles: map[string]embed.FS{
+		// util files
+		"src/utils/handler.go": srcFolder,
+		// page files
+		"src/pages/index.templ":      srcFolder,
+		"src/pages/revalidate.templ": srcFolder,
+		// layout files
+		"src/layouts/layout.templ": srcFolder,
+		// css files
+		"src/css/app.css": srcFolder,
+		// component files
+		"src/components/helloWorld.templ":     srcFolder,
+		"src/components/optimizedImage.templ": srcFolder,
+		"src/components/lazyLoad.templ":       srcFolder,
+		// api files
+		"src/api/helloWorld.go": srcFolder,
+		// root files
+		"makefile":           makeFile,
+		"tailwind.config.js": tailwindConfig,
+		"README.md":          readme,
+		"gothic-config.json": goticConfig,
+		// cli files
+		".gothicCli/HotReload/main.go":       gothicCliFolder,
+		".gothicCli/imgOptimization/main.go": gothicCliFolder,
+		".gothicCli/shared.go":               gothicCliFolder,
+		".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml": gothicCliFolder,
+		".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml":          gothicCliFolder,
+		".gothicCli/buildSamTemplate/templates/template-default.yaml":                gothicCliFolder,
+		".gothicCli/buildSamTemplate/templates/samconfig-template.toml":              gothicCliFolder,
+		".gothicCli/buildSamTemplate/main.go":                                        gothicCliFolder,
+		".gothicCli/buildSamTemplate/templates/Dockerfile-template":                  gothicCliFolder,
+		".gothicCli/buildSamTemplate/cleanup/main.go":                                gothicCliFolder,
+		".gothicCli/CdnAddOrRemoveAssets/main.go":                                    gothicCliFolder,
+		".gothicCli/sam/main.go":                                                     gothicCliFolder,
+		".gothicCli/imgOptimization/setup/main.go":                                   gothicCliFolder,
+	},
+	InitialDirs: []string{
+		// Root Dirs
+		"public",
+		".gothicCli",
+		"src",
+		"optimize",
+		// Public Dirs
+		"public/imageExample",
+		// Cli Dirs
+		".gothicCli/HotReload",
+		".gothicCli/imgOptimization",
+		".gothicCli/imgOptimization/setup",
+		".gothicCli/buildSamTemplate",
+		".gothicCli/buildSamTemplate/templates",
+		".gothicCli/buildSamTemplate/cleanup",
+		".gothicCli/CdnAddOrRemoveAssets",
+		".gothicCli/sam",
+		// Src Dirs
+		"src/api",
+		"src/components",
+		"src/css",
+		"src/layouts",
+		"src/pages",
+		"src/utils",
+	},
+	GitIgnore: gitIgnore,
+	EnvSample: envs,
+	Env:       envs,
+	AirToml:   airToml,
+	Tailwind: gothicCli.TailWindCSS{
+		Mac:     tailwindCSSMac,
+		Windows: tailwindCSSWindows,
+		Linux:   tailwindCSSLinux,
+		Config:  tailwindConfig,
+	},
+	GoticConfig:     goticConfig,
+	Readme:          readme,
+	MakeFile:        makeFile,
+	SrcFolder:       srcFolder,
+	PublicFolder:    publicFolder,
+	ServerFolder:    serverFolder,
+	GothicCliFolder: gothicCliFolder,
+	CustomTemplateBasedPages: map[string]string{
+		"src/pages/revalidate.templ": "Revalidate",
+		"src/pages/index.templ":      "Index",
+	},
+	CustomTemplateBasedComponents: map[string]string{
+		"src/components/helloWorld.templ": "HelloWorld",
+		"src/components/lazyLoad.templ":   "LazyLoad",
+	},
+	CustomTemplateBasedRoutes: map[string]string{
+		"src/api/helloWorld.go": "HelloWorld",
+	},
+}
+
 func main() {
 	cli := gothicCli.NewCli()
 	commands := cli.WaitForCommands()
-	data := gothicCli.GothicCliData{
-		PublicFolderAssets: map[string]embed.FS{
-			"public/imageExample/blurred.jpeg":  publicFolder,
-			"public/imageExample/original.jpeg": publicFolder,
-			"public/favicon.ico":                publicFolder,
-		},
-		InitialFiles: map[string]embed.FS{
-			// util files
-			"src/utils/handler.go": srcFolder,
-			// page files
-			"src/pages/index.templ":      srcFolder,
-			"src/pages/revalidate.templ": srcFolder,
-			// layout files
-			"src/layouts/layout.templ": srcFolder,
-			// css files
-			"src/css/app.css": srcFolder,
-			// component files
-			"src/components/helloWorld.templ":     srcFolder,
-			"src/components/optimizedImage.templ": srcFolder,
-			"src/components/lazyLoad.templ":       srcFolder,
-			// api files
-			"src/api/helloWorld.go": srcFolder,
-			// root files
-			"makefile":           makeFile,
-			"tailwind.config.js": tailwindConfig,
-			"README.md":          readme,
-			"gothic-config.json": goticConfig,
-			// cli files
-			".gothicCli/HotReload/main.go":       gothicCliFolder,
-			".gothicCli/imgOptimization/main.go": gothicCliFolder,
-			".gothicCli/shared.go":               gothicCliFolder,
-			".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml": gothicCliFolder,
-			".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml":          gothicCliFolder,
-			".gothicCli/buildSamTemplate/templates/template-default.yaml":                gothicCliFolder,
-			".gothicCli/buildSamTemplate/templates/samconfig-template.toml":              gothicCliFolder,
-			".gothicCli/buildSamTemplate/main.go":                                        gothicCliFolder,
-			".gothicCli/buildSamTemplate/templates/Dockerfile-template":                  gothicCliFolder,
-			".gothicCli/buildSamTemplate/cleanup/main.go":                                gothicCliFolder,
-			".gothicCli/CdnAddOrRemoveAssets/main.go":                                    gothicCliFolder,
-			".gothicCli/sam/main.go":                                                     gothicCliFolder,
-			".gothicCli/imgOptimization/setup/main.go":                                   gothicCliFolder,
-		},
-		InitialDirs: []string{
-			// Root Dirs
-			"public",
-			".gothicCli",
-			"src",
-			"optimize",
-			// Public Dirs
-			"public/imageExample",
-			// Cli Dirs
-			".gothicCli/HotReload",
-			".gothicCli/imgOptimization",
-			".gothicCli/imgOptimization/setup",
-			".gothicCli/buildSamTemplate",
-			".gothicCli/buildSamTemplate/templates",
-			".gothicCli/buildSamTemplate/cleanup",
-			".gothicCli/CdnAddOrRemoveAssets",
-			".gothicCli/sam",
-			// Src Dirs
-			"src/api",
-			"src/components",
-			"src/css",
-			"src/layouts",
-			"src/pages",
-			"src/utils",
-		},
-		GitIgnore: gitIgnore,
-		EnvSample: envs,
-		Env:       envs,
-		AirToml:   airToml,
-		Tailwind: gothicCli.TailWindCSS{
-			Mac:     tailwindCSSMac,
-			Windows: tailwindCSSWindows,
-			Linux:   tailwindCSSLinux,
-			Config:  tailwindConfig,
-		},
-		GoticConfig:     goticConfig,
-		Readme:          readme,
-		MakeFile:        makeFile,
-		SrcFolder:       srcFolder,
-		PublicFolder:    publicFolder,
-		ServerFolder:    serverFolder,
-		GothicCliFolder: gothicCliFolder,
-		CustomTemplateBasedPages: map[string]string{
-			"src/pages/revalidate.templ": "Revalidate",
-			"src/pages/index.templ":      "Index",
-		},
-		CustomTemplateBasedComponents: map[string]string{
-			"src/components/helloWorld.templ": "HelloWorld",
-			"src/components/lazyLoad.templ":   "LazyLoad",
-		},
-		CustomTemplateBasedRoutes: map[string]string{
-			"src/api/helloWorld.go": "HelloWorld",
-		},
-	}
 
 	if *commands.Help {
 		cli.PromptHelpInstructions()
