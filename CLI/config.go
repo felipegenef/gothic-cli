@@ -1,4 +1,4 @@
-package gothicCliShared
+package cli
 
 type Config struct {
 	ProjectName    string `json:"projectName"`

@@ -4,11 +4,8 @@ import (
 	"embed"
 	"fmt"
 
-	gothicCli "github.com/felipegenef/gothic-cli/utils/cli"
+	gothicCli "github.com/felipegenef/gothic-cli/CLI"
 )
-
-//go:embed .gothicCli
-var gothicCliFolder embed.FS
 
 //go:embed server
 var serverFolder embed.FS
@@ -109,20 +106,6 @@ var data = gothicCli.GothicCliData{
 		"tailwind.config.js": tailwindConfig,
 		"README.md":          readme,
 		"gothic-config.json": goticConfig,
-		// cli files
-		".gothicCli/HotReload/main.go":       gothicCliFolder,
-		".gothicCli/imgOptimization/main.go": gothicCliFolder,
-		".gothicCli/shared.go":               gothicCliFolder,
-		".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml": gothicCliFolder,
-		".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml":          gothicCliFolder,
-		".gothicCli/buildSamTemplate/templates/template-default.yaml":                gothicCliFolder,
-		".gothicCli/buildSamTemplate/templates/samconfig-template.toml":              gothicCliFolder,
-		".gothicCli/buildSamTemplate/main.go":                                        gothicCliFolder,
-		".gothicCli/buildSamTemplate/templates/Dockerfile-template":                  gothicCliFolder,
-		".gothicCli/buildSamTemplate/cleanup/main.go":                                gothicCliFolder,
-		".gothicCli/CdnAddOrRemoveAssets/main.go":                                    gothicCliFolder,
-		".gothicCli/sam/main.go":                                                     gothicCliFolder,
-		".gothicCli/imgOptimization/setup/main.go":                                   gothicCliFolder,
 	},
 	InitialDirs: []string{
 		// Root Dirs
@@ -159,13 +142,12 @@ var data = gothicCli.GothicCliData{
 		Linux:   tailwindCSSLinux,
 		Config:  tailwindConfig,
 	},
-	GoticConfig:     goticConfig,
-	Readme:          readme,
-	MakeFile:        makeFile,
-	SrcFolder:       srcFolder,
-	PublicFolder:    publicFolder,
-	ServerFolder:    serverFolder,
-	GothicCliFolder: gothicCliFolder,
+	GoticConfig:  goticConfig,
+	Readme:       readme,
+	MakeFile:     makeFile,
+	SrcFolder:    srcFolder,
+	PublicFolder: publicFolder,
+	ServerFolder: serverFolder,
 	CustomTemplateBasedPages: map[string]string{
 		"src/pages/revalidate.templ": "Revalidate",
 		"src/pages/index.templ":      "Index",
@@ -188,11 +170,26 @@ func main() {
 		return
 	}
 	if *commands.Init {
-		cli.CreateNewGothicApp(data)
-	} else if *commands.Build != "" {
-		cli.BuildCommand(commands.Build, data)
-	} else {
-		fmt.Println("Use --init to initialize the project or --build to build a boilerplate example.")
+		cli.InitCommand.CreateNewGothicApp(data)
+		return
+	}
+	if *commands.Build != "" {
+		cli.BuildCommand.Build(commands.Build, data)
+		return
+	}
+	if *commands.Deploy {
+		cli.DeployCommand.Deploy(commands.DeployStage, commands.DeployAction)
+		return
 	}
 
+	if *commands.HotReload {
+		cli.HotReloadCommand.HotReload()
+		return
+	}
+	if *commands.ImgOptimization {
+		cli.ImgOptimizationCommand.OptimizeImages()
+		return
+	}
+
+	fmt.Println("Check all commands available with gothic-cli --help")
 }

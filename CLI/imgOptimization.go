@@ -1,7 +1,6 @@
-package main
+package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -11,16 +10,24 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	webp "golang.org/x/image/webp"
-
-	gothicCliShared "{{.GoModName}}/.gothicCli"
-
 	"github.com/nfnt/resize"
+	webp "golang.org/x/image/webp"
 )
 
-func main() {
+type ImgOptimizationCommand struct {
+	cli *GothicCli
+}
+
+func NewImgOptimizationCommandCli() ImgOptimizationCommand {
+	return ImgOptimizationCommand{}
+}
+
+func (command *ImgOptimizationCommand) OptimizeImages() {
+	command.setup()
+	// TODO change it to struct properties
 	inputDir := "./optimize"
 	outputDir := "./public"
+	// TODO change it to struct properties and make a for loop over slice
 	downloadResizeCMD := exec.Command("go", "mod", "download", "github.com/nfnt/resize")
 	downloadWebpCMD := exec.Command("go", "mod", "download", "golang.org/x/image")
 	// Make sure needed packages have been downloaded
@@ -31,21 +38,7 @@ func main() {
 		log.Fatalf("Error executing add command: %v", err)
 	}
 
-	file, err := os.Open("gothic-config.json")
-	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-	}
-	defer file.Close()
-
-	// Cria uma variável para armazenar a configuração
-	var config gothicCliShared.Config
-
-	// Decodifica o JSON do arquivo
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&config)
-	if err != nil {
-		log.Fatalf("Error decoding JSON: %v", err)
-	}
+	config := command.cli.GetConfig()
 
 	// Create the output directory if it doesn't exist
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
@@ -163,4 +156,27 @@ func main() {
 	}
 
 	fmt.Println("Resizing complete!")
+}
+
+func (command *ImgOptimizationCommand) setup() {
+	// TODO change it to struct properties and make a for loop over slice
+	getResizeCMD := exec.Command("go", "get", "github.com/nfnt/resize")
+	getWebpCMD := exec.Command("go", "get", "golang.org/x/image")
+	// Make sure needed packages have been added to go.mod
+	if err := getResizeCMD.Run(); err != nil {
+		log.Fatalf("Error executing add command: %v", err)
+	}
+	if err := getWebpCMD.Run(); err != nil {
+		log.Fatalf("Error executing add command: %v", err)
+	}
+	// TODO change it to struct properties and make a for loop over slice
+	downloadResizeCMD := exec.Command("go", "mod", "download", "github.com/nfnt/resize")
+	downloadWebpCMD := exec.Command("go", "mod", "download", "golang.org/x/image")
+	// Make sure needed packages have been downloaded
+	if err := downloadResizeCMD.Run(); err != nil {
+		log.Fatalf("Error executing add command: %v", err)
+	}
+	if err := downloadWebpCMD.Run(); err != nil {
+		log.Fatalf("Error executing add command: %v", err)
+	}
 }
