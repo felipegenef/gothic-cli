@@ -3,10 +3,10 @@ STAGE ?= dev
 
 # To deploy your app and public folder
 deploy: 
-	gothic-cli --deploy --stage $(STAGE)
+	gothic-cli --deploy --action deploy --stage $(STAGE)
 
 delete: 
-	gothic-cli --delete --stage $(STAGE)
+	gothic-cli --deploy --action delete --stage $(STAGE)
 
 # Starts your Application in dev mode watching Templates, golang files and CSS files
 dev: 
