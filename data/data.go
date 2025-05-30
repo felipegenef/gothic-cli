@@ -4,6 +4,9 @@ import (
 	"embed"
 )
 
+//go:embed .gothicCli/templates
+var templatesFolder embed.FS
+
 //go:embed server
 var serverFolder embed.FS
 
@@ -112,6 +115,12 @@ var DefaultCLIData = GothicCliData{
 		"public/favicon.ico":                publicFolder,
 	},
 	InitialFiles: map[string]embed.FS{
+		// eemplate files
+		".gothicCli/templates/Dockerfile-template":                  templatesFolder,
+		".gothicCli/templates/samconfig-template.toml":              templatesFolder,
+		".gothicCli/templates/template-custom-domain-with-arn.yaml": templatesFolder,
+		".gothicCli/templates/template-custom-domain.yaml":          templatesFolder,
+		".gothicCli/templates/template-default.yaml":                templatesFolder,
 		// util files
 		"src/utils/handler.go": srcFolder,
 		// page files
@@ -142,14 +151,7 @@ var DefaultCLIData = GothicCliData{
 		// Public Dirs
 		"public/imageExample",
 		// Cli Dirs
-		".gothicCli/HotReload",
-		".gothicCli/imgOptimization",
-		".gothicCli/imgOptimization/setup",
-		".gothicCli/buildSamTemplate",
-		".gothicCli/buildSamTemplate/templates",
-		".gothicCli/buildSamTemplate/cleanup",
-		".gothicCli/CdnAddOrRemoveAssets",
-		".gothicCli/sam",
+		".gothicCli/templates",
 		// Src Dirs
 		"src/api",
 		"src/components",

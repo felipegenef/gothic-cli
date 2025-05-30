@@ -1,12 +1,16 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	templGenerate "github.com/a-h/templ/cmd/templ/generatecmd"
 )
 
 type DeployCommand struct {
@@ -19,16 +23,9 @@ func NewDeployCommandCli(cli *GothicCli) DeployCommand {
 	}
 }
 
-func (command *DeployCommand) CdnAddOrRemoveAssets(stage *string, action *string) {
+func (command *DeployCommand) cdnAddOrRemoveAssets(stage string, action string) {
 
 	config := command.cli.GetConfig()
-
-	var stageValue string
-	if stage != nil {
-		stageValue = *stage
-	} else {
-		stageValue = "default" // or a default value
-	}
 
 	// Read the app ID from the file
 	content, err := os.ReadFile(".gothicCli/app-id.txt")
@@ -41,10 +38,10 @@ func (command *DeployCommand) CdnAddOrRemoveAssets(stage *string, action *string
 	appID := string(content)
 
 	// Construct the S3 bucket name
-	bucketPublicFolderName := "s3://" + config.ProjectName + "-" + stageValue + "-" + appID + "/public"
+	bucketPublicFolderName := "s3://" + config.ProjectName + "-" + stage + "-" + appID + "/public"
 
 	// Check the action and execute the corresponding command
-	switch *action {
+	switch action {
 	case "add":
 		addFilesCmd := exec.Command("aws", "s3", "cp", "public", bucketPublicFolderName, "--recursive", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
 		addFilesCmd.Stdout = os.Stdout
@@ -70,12 +67,11 @@ func (command *DeployCommand) CdnAddOrRemoveAssets(stage *string, action *string
 		fmt.Println("S3 Files deleted successfully.")
 
 	default:
-		log.Fatalf("Invalid action specified: %s. Use 'add' or 'delete'.", *action)
+		log.Fatalf("Invalid action specified: %s. Use 'add' or 'delete'.", action)
 	}
 }
 
-func (command *DeployCommand) Deploy(stage string, action string) {
-
+func (command *DeployCommand) setup(stage string, action string) {
 	config := command.cli.GetConfig()
 
 	// Check if the Deploy configuration is present
@@ -102,12 +98,11 @@ func (command *DeployCommand) Deploy(stage string, action string) {
 	}
 
 	// Replace the project name in all files
-	// TODO get from new Templates folder
 	filePaths := []string{
-		".gothicCli/buildSamTemplate/templates/samconfig-template.toml",
-		".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml",
-		".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml",
-		".gothicCli/buildSamTemplate/templates/template-default.yaml",
+		".gothicCli/templates/samconfig-template.toml",
+		".gothicCli/templates/template-custom-domain-with-arn.yaml",
+		".gothicCli/templates/template-custom-domain.yaml",
+		".gothicCli/templates/template-default.yaml",
 	}
 	// TODO use native template replace on cli.Template struct methods
 	for _, filePath := range filePaths {
@@ -123,11 +118,12 @@ func (command *DeployCommand) Deploy(stage string, action string) {
 		}
 
 		if envConfig.CustomDomain != nil || envConfig.HostedZoneId != nil {
-			templateFile := ".gothicCli/buildSamTemplate/templates/template-custom-domain-with-arn.yaml"
+			templateFile := ".gothicCli/templates/template-custom-domain-with-arn.yaml"
 			if envConfig.CertificateArn != nil {
 				if err := command.replaceInFile("AcmArnReplacerString", *envConfig.CertificateArn, templateFile); err != nil {
 					log.Fatalf("Error replacing certificate ARN in template file: %w", err)
 				}
+
 				// TODO use native template replace on cli.Template struct methods
 				command.copyFile(templateFile, "template.yaml")
 				command.replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stage, "template.yaml")
@@ -137,7 +133,8 @@ func (command *DeployCommand) Deploy(stage string, action string) {
 
 			} else {
 				// TODO use native template replace on cli.Template struct methods
-				templateFile := ".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml"
+				templateFile := ".gothicCli/templates/template-custom-domain.yaml"
+
 				command.copyFile(templateFile, "template.yaml")
 				command.replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stage, "template.yaml")
 				command.replaceCustomDomainValues(envConfig.CustomDomain, envConfig.HostedZoneId, "template.yaml")
@@ -149,7 +146,8 @@ func (command *DeployCommand) Deploy(stage string, action string) {
 		}
 	} else {
 		// TODO use native template replace on cli.Template struct methods
-		templateFile := ".gothicCli/buildSamTemplate/templates/template-default.yaml"
+		templateFile := ".gothicCli/templates/template-default.yaml"
+
 		command.copyFile(templateFile, "template.yaml")
 		// Replace the environment variables
 		command.replaceEnvVariables(envConfig.ENV, "template.yaml")
@@ -158,11 +156,110 @@ func (command *DeployCommand) Deploy(stage string, action string) {
 
 	}
 	// TODO use native template replace on cli.Template struct methods
-	command.copyFile(".gothicCli/buildSamTemplate/templates/Dockerfile-template", "Dockerfile")
-	command.copyFile(".gothicCli/buildSamTemplate/templates/samconfig-template.toml", "samconfig.toml")
+	command.copyFile(".gothicCli/templates/Dockerfile-template", "Dockerfile")
+	command.copyFile(".gothicCli/templates/samconfig-template.toml", "samconfig.toml")
 	// Replace the region
 	if err := command.replaceInFile("regionReplacerString", config.Deploy.Region, "samconfig.toml"); err != nil {
 		log.Fatalf("Error replacing region in file %s: %w", "samconfig.toml", err)
+	}
+
+}
+
+func (command *DeployCommand) cleanupCache(config Config, stage string) {
+	// Execute the command to get the CloudFront distribution ID
+	getDistributionIdCMD := exec.Command("aws", "cloudformation", "describe-stacks", "--stack-name", config.ProjectName+"-"+stage, "--query", "Stacks[0].Outputs[?OutputKey=='CloudFrontId'].OutputValue", "--output", "text", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
+
+	// Capture the output of the command
+	var out bytes.Buffer
+	getDistributionIdCMD.Stdout = &out
+	if err := getDistributionIdCMD.Run(); err != nil {
+		log.Fatalf("Error getting CloudFront Id: %v", err)
+	}
+
+	// The result of the command will be the CloudFront distribution ID
+	distributionId := strings.TrimSpace(out.String()) // Remove any extra spaces
+	if distributionId == "" {
+		log.Fatal("CloudFront ID not found")
+	}
+
+	// Now, use the distribution ID in the command to create the invalidation
+	cleanCachesCmd := exec.Command("aws", "cloudfront", "create-invalidation", "--distribution-id", distributionId, "--paths", "/*", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
+
+	// Execute the cache cleanup command
+	if err := cleanCachesCmd.Run(); err != nil {
+		log.Fatalf("Error cleaning up deploy files: %v", err)
+	}
+
+	// Print the distribution ID and confirm the cache cleanup
+	fmt.Printf("Successfully reset CloudFront cache for distribution: %s\n", distributionId)
+}
+
+func (command *DeployCommand) buildSam() {
+	samBuildCMD := exec.Command("sam", "build")
+	samBuildCMD.Stdout = os.Stdout
+	samBuildCMD.Stdin = os.Stdin
+	samBuildCMD.Stderr = os.Stderr
+
+	// Run the command
+	if err := samBuildCMD.Run(); err != nil {
+		log.Fatalf("Error building app:%v", err)
+	}
+}
+
+func (command *DeployCommand) buildTempl() {
+	logger := NewLogger("error", false, os.Stdout)
+
+	templGenerate.Run(context.Background(), logger, templGenerate.Arguments{})
+
+}
+
+func (command *DeployCommand) buildTailwind() {
+	tailwindCmd := exec.Command("make", "css")
+	tailwindCmd.Stdout = os.Stdout
+	tailwindCmd.Stdin = os.Stdin
+	tailwindCmd.Stderr = os.Stderr
+
+	// Run the command
+	if err := tailwindCmd.Run(); err != nil {
+		log.Fatalf("Error deploying app:%v", err)
+	}
+
+}
+
+func (command *DeployCommand) Deploy(stage string, action string) {
+	command.setup(stage, action)
+	command.buildTempl()
+	command.buildTailwind()
+	command.buildSam()
+	// Create a variable to store the configuration
+	config := command.cli.GetConfig()
+
+	switch action {
+	case "deploy":
+
+		samDeployCMD := exec.Command("sam", "deploy", "--stack-name", config.ProjectName+"-"+stage, "--parameter-overrides", "Stage="+stage, "--profile", config.Deploy.Profile)
+		samDeployCMD.Stdout = os.Stdout
+		samDeployCMD.Stdin = os.Stdin
+		samDeployCMD.Stderr = os.Stderr
+
+		// Run the command
+		if err := samDeployCMD.Run(); err != nil {
+			log.Fatalf("Error deploying app:%v", err)
+		}
+		defer command.cdnAddOrRemoveAssets(stage, "add")
+		defer command.cleanupCache(config, stage)
+
+	case "delete":
+		command.cdnAddOrRemoveAssets(stage, "delete")
+		samDeleteCMD := exec.Command("sam", "delete", "--stack-name", config.ProjectName+"-"+stage, "--profile", config.Deploy.Profile)
+		samDeleteCMD.Stdout = os.Stdout
+		samDeleteCMD.Stdin = os.Stdin
+		samDeleteCMD.Stderr = os.Stderr
+
+		// Run the command
+		if err := samDeleteCMD.Run(); err != nil {
+			log.Fatalf("Error deleting app:%v", err)
+		}
 	}
 	command.cleanup()
 }
@@ -199,6 +296,7 @@ func (command *DeployCommand) replaceTimeoutAndMemory(timeoutValue int, memoryVa
 
 func (command *DeployCommand) copyFile(filePath string, destinationPath string) error {
 	fileContent, err := os.ReadFile(filePath)
+
 	if err != nil {
 		return err
 	}

@@ -37,7 +37,7 @@ func (command *HotReloadCommand) HotReload() {
 		}
 		r.Run()
 	}()
-
+	time.Sleep(3 * time.Second)
 	go func() {
 		logger := NewLogger("error", false, os.Stdout)
 
@@ -46,9 +46,8 @@ func (command *HotReloadCommand) HotReload() {
 			Proxy: "http://localhost:8080",
 		})
 	}()
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
-	// time.Sleep(4 * time.Second)
 	banner := `
  ██████╗  ██████╗ ████████╗██╗  ██╗██╗ ██████╗     █████╗ ██████╗ ██████╗ 
 ██╔════╝ ██╔═══██╗╚══██╔══╝██║  ██║██║██╔════╝    ██╔══██╗██╔══██╗██╔══██╗
