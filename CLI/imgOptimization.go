@@ -18,8 +18,10 @@ type ImgOptimizationCommand struct {
 	cli *GothicCli
 }
 
-func NewImgOptimizationCommandCli() ImgOptimizationCommand {
-	return ImgOptimizationCommand{}
+func NewImgOptimizationCommandCli(cli *GothicCli) ImgOptimizationCommand {
+	return ImgOptimizationCommand{
+		cli: cli,
+	}
 }
 
 func (command *ImgOptimizationCommand) OptimizeImages() {

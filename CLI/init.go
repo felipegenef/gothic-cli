@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 	"log"
@@ -11,48 +10,23 @@ import (
 	"strings"
 	"sync"
 
+	cli_data "github.com/felipegenef/gothic-cli/data"
 	"github.com/teris-io/shortid"
 )
 
-type TailWindCSS struct {
-	Mac     embed.FS
-	Windows embed.FS
-	Linux   embed.FS
-	Config  embed.FS
-}
-
-type GothicCliData struct {
-	InitialFiles                  map[string]embed.FS
-	PublicFolderAssets            map[string]embed.FS
-	InitialDirs                   []string
-	CustomTemplateBasedPages      map[string]string
-	CustomTemplateBasedComponents map[string]string
-	CustomTemplateBasedRoutes     map[string]string
-	GitIgnore                     string
-	EnvSample                     string
-	Env                           string
-	AirToml                       string
-	Tailwind                      TailWindCSS
-	GoticConfig                   embed.FS
-	Readme                        embed.FS
-	MakeFile                      embed.FS
-	SrcFolder                     embed.FS
-	PublicFolder                  embed.FS
-	ServerFolder                  embed.FS
-	ProjectName                   string
-	GoModName                     string
-}
-
 type InitCommand struct {
-	gothicCliData GothicCliData
+	gothicCliData cli_data.GothicCliData
 	cli           *GothicCli
 }
 
-func NewInitCommandCli() InitCommand {
-	return InitCommand{}
+func NewInitCommandCli(cli *GothicCli, gothicCliData cli_data.GothicCliData) InitCommand {
+	return InitCommand{
+		cli:           cli,
+		gothicCliData: gothicCliData,
+	}
 }
 
-func (command *InitCommand) CreateNewGothicApp(data GothicCliData) {
+func (command *InitCommand) CreateNewGothicApp(data cli_data.GothicCliData) {
 
 	data.ProjectName = command.promptForProjectName()
 	data.GoModName = command.promptForGoModName()
@@ -102,7 +76,7 @@ func (command *InitCommand) createTailwindBinary() {
 	case "linux":
 		data, _ := fs.ReadFile(command.gothicCliData.Tailwind.Linux, "tailwindcss-linux")
 		command.cli.Templates.InitCMDTemplateInfo.TailWindFileName = "tailwindcss"
-		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./temp/main"
+		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./tmp/main"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
 			log.Fatalf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)
@@ -110,7 +84,7 @@ func (command *InitCommand) createTailwindBinary() {
 	case "darwin":
 		data, _ := fs.ReadFile(command.gothicCliData.Tailwind.Mac, "tailwindcss-mac")
 		command.cli.Templates.InitCMDTemplateInfo.TailWindFileName = "tailwindcss"
-		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./temp/main"
+		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./tmp/main"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
 			log.Fatalf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)
@@ -118,7 +92,7 @@ func (command *InitCommand) createTailwindBinary() {
 	case "windows":
 		data, _ := fs.ReadFile(command.gothicCliData.Tailwind.Windows, "tailwindcss-windows.exe")
 		command.cli.Templates.InitCMDTemplateInfo.TailWindFileName = "tailwindcss.exe"
-		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./temp/main.exe"
+		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./tmp/main.exe"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss.exe", data, 0755); err != nil {
 			log.Fatalf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)

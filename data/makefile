@@ -3,19 +3,19 @@ STAGE ?= dev
 
 # To deploy your app and public folder
 deploy: 
-	gothic-cli --deploy --action deploy --stage $(STAGE)
+	gothic-cli deploy --action deploy --stage $(STAGE)
 
 delete: 
-	gothic-cli --deploy --action delete --stage $(STAGE)
+	gothic-cli deploy --action delete --stage $(STAGE)
 
 # Starts your Application in dev mode watching Templates, golang files and CSS files
 dev: 
-	gothic-cli --hot-reload
+	gothic-cli hot-reload
 
 
 # Compiles Templates to generate equivalent golang files 
 templ:
-	templ generate	
+	gothic-cli generate	
 
 
 # Generate CSS based on classes located on templ files
@@ -28,6 +28,6 @@ hot-reload-css:
 
 # Generate CSS based on classes located on templ files in watch mode
 optimize-images:
-	gothic-cli --optimize-images
+	gothic-cli optimize-images
 
 

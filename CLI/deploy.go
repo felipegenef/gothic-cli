@@ -13,8 +13,10 @@ type DeployCommand struct {
 	cli *GothicCli
 }
 
-func NewDeployCommandCli() DeployCommand {
-	return DeployCommand{}
+func NewDeployCommandCli(cli *GothicCli) DeployCommand {
+	return DeployCommand{
+		cli: cli,
+	}
 }
 
 func (command *DeployCommand) CdnAddOrRemoveAssets(stage *string, action *string) {
@@ -72,14 +74,7 @@ func (command *DeployCommand) CdnAddOrRemoveAssets(stage *string, action *string
 	}
 }
 
-func (command *DeployCommand) Deploy(stage *string, action *string) {
-
-	var stageValue string
-	if stage != nil {
-		stageValue = *stage
-	} else {
-		stageValue = "" // or a default value
-	}
+func (command *DeployCommand) Deploy(stage string, action string) {
 
 	config := command.cli.GetConfig()
 
@@ -87,9 +82,9 @@ func (command *DeployCommand) Deploy(stage *string, action *string) {
 	if config.Deploy == nil {
 		log.Fatalf("Deploy configuration missing in gothic-config.json")
 	}
-	fmt.Println("SELECTED STAGE: " + stageValue)
+	fmt.Println("SELECTED STAGE: " + stage)
 	// Select the environment based on the --stage parameter
-	var envConfig EnvVariables = config.Deploy.Stages[stageValue]
+	var envConfig EnvVariables = config.Deploy.Stages[stage]
 	// TODO: move this ID to the config file
 	content, err := os.ReadFile(".gothicCli/app-id.txt")
 	if err != nil {
@@ -102,8 +97,8 @@ func (command *DeployCommand) Deploy(stage *string, action *string) {
 
 	// Check if the minimum variables are set
 	if envConfig.BucketName == "" || envConfig.LambdaName == "" {
-		envConfig.LambdaName = config.ProjectName + "-" + stageValue + "-" + appID
-		envConfig.BucketName = config.ProjectName + "-" + stageValue + "-" + appID
+		envConfig.LambdaName = config.ProjectName + "-" + stage + "-" + appID
+		envConfig.BucketName = config.ProjectName + "-" + stage + "-" + appID
 	}
 
 	// Replace the project name in all files
@@ -135,7 +130,7 @@ func (command *DeployCommand) Deploy(stage *string, action *string) {
 				}
 				// TODO use native template replace on cli.Template struct methods
 				command.copyFile(templateFile, "template.yaml")
-				command.replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stageValue, "template.yaml")
+				command.replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stage, "template.yaml")
 				command.replaceCustomDomainWithArnValues(envConfig.CustomDomain, envConfig.HostedZoneId, envConfig.CertificateArn, "template.yaml")
 				command.replaceEnvVariables(envConfig.ENV, "template.yaml")
 				command.replaceTimeoutAndMemory(config.Deploy.ServerTimeout, config.Deploy.ServerMemory, "template.yaml")
@@ -144,7 +139,7 @@ func (command *DeployCommand) Deploy(stage *string, action *string) {
 				// TODO use native template replace on cli.Template struct methods
 				templateFile := ".gothicCli/buildSamTemplate/templates/template-custom-domain.yaml"
 				command.copyFile(templateFile, "template.yaml")
-				command.replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stageValue, "template.yaml")
+				command.replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stage, "template.yaml")
 				command.replaceCustomDomainValues(envConfig.CustomDomain, envConfig.HostedZoneId, "template.yaml")
 				command.replaceEnvVariables(envConfig.ENV, "template.yaml")
 				command.replaceTimeoutAndMemory(config.Deploy.ServerTimeout, config.Deploy.ServerMemory, "template.yaml")
@@ -158,7 +153,7 @@ func (command *DeployCommand) Deploy(stage *string, action *string) {
 		command.copyFile(templateFile, "template.yaml")
 		// Replace the environment variables
 		command.replaceEnvVariables(envConfig.ENV, "template.yaml")
-		command.replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stageValue, "template.yaml")
+		command.replaceStageBucketAndLambdaName(envConfig.LambdaName, envConfig.BucketName, stage, "template.yaml")
 		command.replaceTimeoutAndMemory(config.Deploy.ServerTimeout, config.Deploy.ServerMemory, "template.yaml")
 
 	}

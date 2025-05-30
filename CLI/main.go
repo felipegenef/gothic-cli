@@ -2,7 +2,6 @@ package cli
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -16,7 +15,6 @@ type GothicCli struct {
 	runtime            string
 
 	Templates              Templates
-	BuildCommand           BuildCommand
 	InitCommand            InitCommand
 	DeployCommand          DeployCommand
 	HotReloadCommand       HotReloadCommand
@@ -36,48 +34,16 @@ type CliCommands struct {
 
 func NewCli() GothicCli {
 	cli := GothicCli{
-		GlobalRequiredLibs: []string{"github.com/a-h/templ/cmd/templ", "github.com/air-verse/air"},
+		GlobalRequiredLibs: []string{},
 		runtime:            runtime.GOOS,
 	}
 	// Referene cli pointer for children
-	cli.BuildCommand.cli = &cli
 	cli.InitCommand.cli = &cli
 	cli.DeployCommand.cli = &cli
 	cli.HotReloadCommand.cli = &cli
 	cli.ImgOptimizationCommand.cli = &cli
 
 	return cli
-}
-
-func (cli *GothicCli) WaitForCommands() CliCommands {
-	initCmd := flag.Bool("init", false, "Initialize project files and directories")
-	buildCmd := flag.String("build", "", "Build project (options: page, static-page, isr-page, api-route, isr-api-route, component, isr-component, lazy-load-component)")
-	helpCmd := flag.Bool("help", false, "Display help information")
-	imgOptimizationCmd := flag.Bool("optimize-images", false, "Display help information")
-	hotReloadCmd := flag.Bool("hot-reload", false, "Display help information")
-	deployCmd := flag.Bool("deploy", false, "Specify the deployment stage (default, dev, staging, prod)")
-	deployActionFlag := flag.String("action", "deploy", "Ether deploy or delete the app")
-	deployStageFlag := flag.String("stage", "default", "Specify the deployment stage (default, dev, staging, prod)")
-
-	flag.Parse()
-
-	return CliCommands{Init: initCmd, Build: buildCmd, Help: helpCmd, ImgOptimization: imgOptimizationCmd, HotReload: hotReloadCmd, Deploy: deployCmd, DeployAction: deployActionFlag, DeployStage: deployStageFlag}
-}
-
-func (cli *GothicCli) PromptHelpInstructions() {
-	fmt.Println("Usage:")
-	fmt.Println("  --init                  Initialize project files and directories.")
-	fmt.Println("  --build <type>         Build the project with the specified type.")
-	fmt.Println("                         Options for <type>:")
-	fmt.Println("                           page             Build a regular page.")
-	fmt.Println("                           static-page      Build a static page.")
-	fmt.Println("                           isr-page         Build an ISR page.")
-	fmt.Println("                           api-route        Build an API route.")
-	fmt.Println("                           isr-api-route    Build an ISR API route.")
-	fmt.Println("  --hot-reload           Start hot reloading for the current app.")
-	fmt.Println("  --optimize-images      Generate images in different resolutions from originals in the optimize folder.")
-	fmt.Println("  --deploy <stage>       Deploy the app to the specified stage (default, dev, staging, prod).")
-	fmt.Println("  --help                 Display this help information.")
 }
 
 func (cli *GothicCli) GetConfig() Config {

@@ -6,7 +6,7 @@ WORKDIR /build
 COPY go.mod go.sum ./
 COPY . .
 
-RUN GOOS=linux go build -o ./main main.go
+RUN GOOS=linux go build -ldflags="-w -s" -o ./main main.go
 
 # Start lambda container from fresh image 
 FROM scratch

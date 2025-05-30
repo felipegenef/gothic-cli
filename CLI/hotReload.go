@@ -1,101 +1,67 @@
 package cli
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
-	"os/exec"
-	"sync"
+	"time"
+
+	templGenerate "github.com/a-h/templ/cmd/templ/generatecmd"
+	runner "github.com/air-verse/air/runner"
 )
 
 type HotReloadCommand struct {
 	cli *GothicCli
 }
 
-var (
-	templCmd *exec.Cmd
-	airCmd   *exec.Cmd
-	mu       sync.Mutex
-)
+func NewHotReloadCommandCli(cli *GothicCli) HotReloadCommand {
 
-func NewHotReloadCommandCli() HotReloadCommand {
-	return HotReloadCommand{}
+	return HotReloadCommand{
+		cli: cli,
+	}
 }
 
 func (command *HotReloadCommand) HotReload() {
-	// Start the commands and wait for their completion
-	var wg sync.WaitGroup
-	wg.Add(2)
+	go func() {
+
+		cfg, err := runner.InitConfig("")
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		r, err := runner.NewEngineWithConfig(cfg, false)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		r.Run()
+	}()
 
 	go func() {
-		defer wg.Done()
-		command.runCommand("templ", []string{"generate", "--watch", "--proxy=http://localhost:8080"})
+		logger := NewLogger("error", false, os.Stdout)
+
+		templGenerate.Run(context.Background(), logger, templGenerate.Arguments{
+			Watch: true,
+			Proxy: "http://localhost:8080",
+		})
 	}()
-	// TODO remove air and replace for custom go script
-	go func() {
-		defer wg.Done()
-		command.runCommand("air", []string{})
-	}()
+	time.Sleep(3 * time.Second)
+
+	// time.Sleep(4 * time.Second)
+	banner := `
+ ██████╗  ██████╗ ████████╗██╗  ██╗██╗ ██████╗     █████╗ ██████╗ ██████╗ 
+██╔════╝ ██╔═══██╗╚══██╔══╝██║  ██║██║██╔════╝    ██╔══██╗██╔══██╗██╔══██╗
+██║  ███╗██║   ██║   ██║   ███████║██║██║         ███████║██████╔╝██████╔╝
+██║   ██║██║   ██║   ██║   ██╔══██║██║██║         ██╔══██║██╔═══╝ ██╔═══╝ 
+╚██████╔╝╚██████╔╝   ██║   ██║  ██║██║╚██████╗    ██║  ██║██║     ██║     
+ ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝    ╚═╝  ╚═╝╚═╝     ╚═╝     
+
+🚀 Gothic App is up and running!
+🌐 Listening on: http://127.0.0.1:7331
+♻️  Mode: HOT RELOAD ENABLED
+`
+	fmt.Println(banner)
+
 	select {}
-}
-
-func (command *HotReloadCommand) runCommand(name string, args []string) {
-	cmd := exec.Command(name, args...)
-	mu.Lock()
-	if name == "templ" {
-		templCmd = cmd
-	} else if name == "air" {
-		airCmd = cmd
-	}
-	mu.Unlock()
-
-	// Create pipes for stdout and stderr
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		command.handleError(fmt.Sprintf("Error creating stdout pipe for command %s", name), err)
-		return
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		command.handleError(fmt.Sprintf("Error creating stderr pipe for command %s", name), err)
-		return
-	}
-
-	// Start the command
-	if err := cmd.Start(); err != nil {
-		command.handleError(fmt.Sprintf("Error starting command %s", name), err)
-		return
-	}
-
-	// Print stdout
-	go io.Copy(os.Stdout, stdout)
-
-	// Print stderr
-	go io.Copy(os.Stderr, stderr)
-
-	// Wait for the command to finish
-	if err := cmd.Wait(); err != nil {
-		command.handleError(fmt.Sprintf("Command %s finished with error", name), err)
-	}
-}
-
-func (command *HotReloadCommand) handleError(message string, err error) {
-	log.Println(message, err)
-	command.gracefulShutdown()
-}
-
-func (command *HotReloadCommand) gracefulShutdown() {
-	mu.Lock()
-	defer mu.Unlock()
-
-	if templCmd != nil {
-		templCmd.Process.Kill()
-	}
-	if airCmd != nil {
-		airCmd.Process.Kill()
-	}
-
-	os.Exit(1)
 }
