@@ -15,7 +15,7 @@ dev:
 
 # Compiles Templates to generate equivalent golang files 
 templ:
-	gothic-cli generate	
+	gothic-cli build	
 
 
 # Generate CSS based on classes located on templ files

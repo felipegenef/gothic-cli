@@ -4,7 +4,16 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	gothci_cli "github.com/felipegenef/gothic-cli/CLI"
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	templGenerate "github.com/a-h/templ/cmd/templ/generatecmd"
+	"github.com/air-verse/air/runner"
+	gothic_cli "github.com/felipegenef/gothic-cli/pkg/cli"
+	gothic_helpers "github.com/felipegenef/gothic-cli/pkg/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -18,12 +27,12 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: newHotReloadComand(gothci_cli.NewCli()),
+	RunE: newHotReloadComand(gothic_cli.NewCli()),
 }
 
-func newHotReloadComand(cli gothci_cli.GothicCli) RunEFunc {
+func newHotReloadComand(cli gothic_cli.GothicCli) RunEFunc {
 	return func(cmd *cobra.Command, args []string) error {
-		comand := gothci_cli.NewHotReloadCommandCli(&cli)
+		comand := newHotReloadCommandCli(&cli)
 		comand.HotReload()
 		return nil
 	}
@@ -31,14 +40,58 @@ func newHotReloadComand(cli gothci_cli.GothicCli) RunEFunc {
 
 func init() {
 	rootCmd.AddCommand(hotReloadCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+type HotReloadCommand struct {
+	cli *gothic_cli.GothicCli
+}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// hotReloadCmd.PersistentFlags().String("foo", "", "A help for foo")
+func newHotReloadCommandCli(cli *gothic_cli.GothicCli) HotReloadCommand {
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// hotReloadCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	return HotReloadCommand{
+		cli: cli,
+	}
+}
+
+func (command *HotReloadCommand) HotReload() {
+	go func() {
+
+		cfg, err := runner.InitConfig("")
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		r, err := runner.NewEngineWithConfig(cfg, false)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		r.Run()
+	}()
+	time.Sleep(3 * time.Second)
+	go func() {
+		logger := gothic_helpers.NewLogger("error", false, os.Stdout)
+
+		templGenerate.Run(context.Background(), logger, templGenerate.Arguments{
+			Watch: true,
+			Proxy: "http://localhost:8080",
+		})
+	}()
+	time.Sleep(2 * time.Second)
+
+	banner := `
+ ██████╗  ██████╗ ████████╗██╗  ██╗██╗ ██████╗     █████╗ ██████╗ ██████╗ 
+██╔════╝ ██╔═══██╗╚══██╔══╝██║  ██║██║██╔════╝    ██╔══██╗██╔══██╗██╔══██╗
+██║  ███╗██║   ██║   ██║   ███████║██║██║         ███████║██████╔╝██████╔╝
+██║   ██║██║   ██║   ██║   ██╔══██║██║██║         ██╔══██║██╔═══╝ ██╔═══╝ 
+╚██████╔╝╚██████╔╝   ██║   ██║  ██║██║╚██████╗    ██║  ██║██║     ██║     
+ ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝    ╚═╝  ╚═╝╚═╝     ╚═╝     
+
+🚀 Gothic App is up and running!
+🌐 Listening on: http://127.0.0.1:7331
+♻️  Mode: HOT RELOAD ENABLED
+`
+	fmt.Println(banner)
+
+	select {}
 }

@@ -4,11 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"context"
-	"os"
-
-	templGenerate "github.com/a-h/templ/cmd/templ/generatecmd"
-	gothci_cli "github.com/felipegenef/gothic-cli/CLI"
+	gothic_cli "github.com/felipegenef/gothic-cli/pkg/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -22,15 +18,14 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := gothci_cli.NewLogger("error", false, os.Stdout)
+	RunE: newBuildCommand(gothic_cli.NewCli()),
+}
 
-		err := templGenerate.Run(context.Background(), logger, templGenerate.Arguments{})
-		if err != nil {
-			return err
-		}
-		return nil
-	},
+func newBuildCommand(cli gothic_cli.GothicCli) RunEFunc {
+	return func(cmd *cobra.Command, args []string) error {
+		err := cli.Templ.Render()
+		return err
+	}
 }
 
 func init() {

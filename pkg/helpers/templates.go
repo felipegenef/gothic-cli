@@ -1,4 +1,4 @@
-package cli
+package helpers
 
 import (
 	"embed"
@@ -27,16 +27,16 @@ type BuildCMDTemplateInfo struct {
 	GoModName     string
 }
 
-type Templates struct {
+type TemplateHelper struct {
 	InitCMDTemplateInfo  InitCMDTemplateInfo
 	BuildCMDTemplateInfo BuildCMDTemplateInfo
 }
 
-func NewCLITemplate() Templates {
-	return Templates{}
+func NewTemplateHelper() TemplateHelper {
+	return TemplateHelper{}
 }
 
-func (t *Templates) UpdateFromTemplate(templateFilePath string, outputFilePath string, templateStruct interface{}) error {
+func (t *TemplateHelper) UpdateFromTemplate(templateFilePath string, outputFilePath string, templateStruct interface{}) error {
 	templateFileData, err := os.ReadFile(templateFilePath)
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func (t *Templates) UpdateFromTemplate(templateFilePath string, outputFilePath s
 	return nil
 }
 
-func (t *Templates) CreateFromTemplate(fileTemplate embed.FS, templateFilePath string, outputFilePath string, templateStruct interface{}) error {
+func (t *TemplateHelper) CreateFromTemplate(fileTemplate embed.FS, templateFilePath string, outputFilePath string, templateStruct interface{}) error {
 	templateBytes, err := fs.ReadFile(fileTemplate, templateFilePath)
 	if err != nil {
 		return err
