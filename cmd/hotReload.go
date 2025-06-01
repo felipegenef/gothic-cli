@@ -17,24 +17,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// hotReloadCmd represents the hotReload command
 var hotReloadCmd = &cobra.Command{
 	Use:   "hot-reload",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Run your Gothic app locally in hot-reload mode.",
+	Long: `This command uses Templ, Air, and Tailwind to enable real-time reloading for local development.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+It allows you to develop and debug your Gothic app more efficiently, with changes instantly reflected in the browser as you save your files.`,
 	RunE: newHotReloadComand(gothic_cli.NewCli()),
 }
 
 func newHotReloadComand(cli gothic_cli.GothicCli) RunEFunc {
 	return func(cmd *cobra.Command, args []string) error {
 		comand := newHotReloadCommandCli(&cli)
-		comand.HotReload()
-		return nil
+
+		return comand.HotReload()
 	}
 }
 
@@ -53,7 +49,7 @@ func newHotReloadCommandCli(cli *gothic_cli.GothicCli) HotReloadCommand {
 	}
 }
 
-func (command *HotReloadCommand) HotReload() {
+func (command *HotReloadCommand) HotReload() error {
 	go func() {
 
 		cfg, err := runner.InitConfig("")
@@ -94,4 +90,5 @@ func (command *HotReloadCommand) HotReload() {
 	fmt.Println(banner)
 
 	select {}
+	return nil
 }

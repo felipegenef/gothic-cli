@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -20,24 +19,25 @@ import (
 	"github.com/teris-io/shortid"
 )
 
-// initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize project files and directories.",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Initialize the project structure and configuration files for a Gothic app.",
+	Long: `Sets up the initial folder structure and essential files required to start building a Gothic app.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+This includes:
+  - A precompiled Tailwind binary
+  - An Air.toml configuration file
+  - A gothic-config.json file
+  - A basic example app to help you get started
+  - A link to the official documentation for further guidance`,
 	RunE: newInitComand(gothci_cli.NewCli()),
 }
 
 func newInitComand(cli gothci_cli.GothicCli) RunEFunc {
 	return func(cmd *cobra.Command, args []string) error {
 		comand := NewInitCommandCli(&cli, cli_data.DefaultCLIData)
-		comand.CreateNewGothicApp(cli_data.DefaultCLIData)
-		return nil
+
+		return comand.CreateNewGothicApp(cli_data.DefaultCLIData)
 	}
 }
 
@@ -57,10 +57,18 @@ func NewInitCommandCli(cli *gothci_cli.GothicCli, gothicCliData cli_data.GothicC
 	}
 }
 
-func (command *InitCommand) CreateNewGothicApp(data cli_data.GothicCliData) {
+func (command *InitCommand) CreateNewGothicApp(data cli_data.GothicCliData) error {
 
-	data.ProjectName = command.promptForProjectName()
-	data.GoModName = command.promptForGoModName()
+	projectName, err := command.promptForProjectName()
+	if err != nil {
+		return err
+	}
+	data.ProjectName = projectName
+	gomodName, err := command.promptForGoModName()
+	if err != nil {
+		return err
+	}
+	data.GoModName = gomodName
 	command.gothicCliData = data
 
 	command.initializeProject()
@@ -70,6 +78,7 @@ func (command *InitCommand) CreateNewGothicApp(data cli_data.GothicCliData) {
 	gitinit := exec.Command("git", "init")
 	gitinit.Run()
 	fmt.Println("Project initialized successfully!")
+	return nil
 }
 
 // Function to create directories and files
@@ -94,15 +103,16 @@ func (command *InitCommand) initializeProject() {
 	command.createTemplateBasedFiles()
 }
 
-func (command *InitCommand) createInitialDirs() {
+func (command *InitCommand) createInitialDirs() error {
 	for _, dir := range command.gothicCliData.InitialDirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			log.Fatalf("Error generating initial Directories:", err)
+			return fmt.Errorf("error generating initial Directories: %v", err)
 		}
 	}
+	return nil
 }
 
-func (command *InitCommand) createTailwindBinary() {
+func (command *InitCommand) createTailwindBinary() error {
 	switch command.cli.Runtime {
 	case "linux":
 		data, _ := fs.ReadFile(command.gothicCliData.Tailwind.Linux, "tailwindcss-linux")
@@ -110,7 +120,7 @@ func (command *InitCommand) createTailwindBinary() {
 		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./tmp/main"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
-			log.Fatalf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)
+			return fmt.Errorf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)
 		}
 	case "darwin":
 		data, _ := fs.ReadFile(command.gothicCliData.Tailwind.Mac, "tailwindcss-mac")
@@ -118,7 +128,7 @@ func (command *InitCommand) createTailwindBinary() {
 		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./tmp/main"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss", data, 0755); err != nil {
-			log.Fatalf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)
+			return fmt.Errorf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)
 		}
 	case "windows":
 		data, _ := fs.ReadFile(command.gothicCliData.Tailwind.Windows, "tailwindcss-windows.exe")
@@ -126,19 +136,19 @@ func (command *InitCommand) createTailwindBinary() {
 		command.cli.Templates.InitCMDTemplateInfo.MainBinaryFileName = "./tmp/main.exe"
 		// Write the file with executable permissions (0755)
 		if err := os.WriteFile("tailwindcss.exe", data, 0755); err != nil {
-			log.Fatalf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)
+			return fmt.Errorf("error creating file %s: %w", command.cli.Templates.InitCMDTemplateInfo.TailWindFileName, err)
 		}
 	default:
-		fmt.Println("Unknown OS.")
+		return fmt.Errorf("error: unknown OS")
 	}
-
+	return nil
 }
 
-func (command *InitCommand) createHiddenFiles() {
+func (command *InitCommand) createHiddenFiles() error {
 
 	upperId, err := shortid.Generate()
 	if err != nil {
-		log.Fatalf("Error generating short ID:", err)
+		return fmt.Errorf("error generating app ID:", err)
 	}
 	// Replace all special characters with -
 	re := regexp.MustCompile(`[^\w\s]|_`)
@@ -170,13 +180,14 @@ func (command *InitCommand) createHiddenFiles() {
 		wg.Done()
 	}()
 	wg.Wait()
+	return nil
 
 }
 
-func (command *InitCommand) createInitialFileStructure() {
+func (command *InitCommand) createInitialFileStructure() error {
 	mainServerData, _ := fs.ReadFile(command.gothicCliData.ServerFolder, "server/server.go")
 	if err := os.WriteFile("main.go", mainServerData, 0644); err != nil {
-		log.Fatalf("error creating file %s: %w", "main.go", err)
+		return fmt.Errorf("error creating file %s: %w", "main.go", err)
 	}
 	command.cli.Templates.UpdateFromTemplate("main.go", "main.go", command.cli.Templates.InitCMDTemplateInfo)
 
@@ -188,7 +199,7 @@ func (command *InitCommand) createInitialFileStructure() {
 		go func() {
 			defer wg.Done()
 			if err := command.cli.Templates.CreateFromTemplate(fileContent, filename, filename, command.cli.Templates.InitCMDTemplateInfo); err != nil {
-				log.Fatalf("error creating file %s: %w", filename, err)
+				panic(fmt.Sprintf("error creating file %s: %w", "main.go", err))
 			}
 		}()
 	}
@@ -199,16 +210,17 @@ func (command *InitCommand) createInitialFileStructure() {
 			defer wg.Done()
 			data, err := fs.ReadFile(fileContent, filename)
 			if err != nil {
-				log.Fatalf("error creating file %s: %w", filename, err)
+				panic(fmt.Sprintf("error creating file %s: %w", filename, err))
 			}
 
 			if err := os.WriteFile(filename, data, 0644); err != nil {
-				log.Fatalf("error creating file %s: %w", filename, err)
+				panic(fmt.Sprintf("error creating file %s: %w", filename, err))
 			}
 		}()
 	}
 
 	wg.Wait()
+	return nil
 }
 
 func (command *InitCommand) createTemplateBasedFiles() {
@@ -220,7 +232,7 @@ func (command *InitCommand) createTemplateBasedFiles() {
 	for templateFilePath, pageName := range command.gothicCliData.CustomTemplateBasedPages {
 		go func() {
 			if err := command.cli.Templates.CreateFromTemplate(command.gothicCliData.SrcFolder, templateFilePath, templateFilePath, helpers.BuildCMDTemplateInfo{PageName: pageName, GoModName: command.gothicCliData.GoModName}); err != nil {
-				log.Fatalf("error creating file %s: %w", templateFilePath, err)
+				panic(fmt.Sprintf("error creating file %s: %w", templateFilePath, err))
 			}
 			wg.Done()
 		}()
@@ -231,7 +243,7 @@ func (command *InitCommand) createTemplateBasedFiles() {
 	for templateFilePath, componentName := range command.gothicCliData.CustomTemplateBasedComponents {
 		go func() {
 			if err := command.cli.Templates.CreateFromTemplate(command.gothicCliData.SrcFolder, templateFilePath, templateFilePath, helpers.BuildCMDTemplateInfo{ComponentName: componentName, GoModName: command.gothicCliData.GoModName}); err != nil {
-				log.Fatalf("error creating file %s: %w", templateFilePath, err)
+				panic(fmt.Sprintf("error creating file %s: %w", templateFilePath, err))
 			}
 			wg.Done()
 		}()
@@ -242,36 +254,37 @@ func (command *InitCommand) createTemplateBasedFiles() {
 	for templateFilePath, routeName := range command.gothicCliData.CustomTemplateBasedRoutes {
 		go func() {
 			if err := command.cli.Templates.CreateFromTemplate(command.gothicCliData.SrcFolder, templateFilePath, templateFilePath, helpers.BuildCMDTemplateInfo{RouteName: routeName, GoModName: command.gothicCliData.GoModName}); err != nil {
-				log.Fatalf("error creating file %s: %w", templateFilePath, err)
+				panic(fmt.Sprintf("error creating file %s: %w", templateFilePath, err))
 			}
 			wg.Done()
 		}()
 
 	}
 	wg.Wait()
+
 }
 
-func (command *InitCommand) promptForProjectName() string {
+func (command *InitCommand) promptForProjectName() (string, error) {
 	var name string
 	fmt.Print("Enter your unique stack name in kebab case (e.g., your-unique-stack-name): ")
 	fmt.Scanln(&name)
 
 	// Validate kebab case
 	if matched, _ := regexp.MatchString(`^[a-z0-9]+(-[a-z0-9]+)*$`, name); !matched {
-		log.Fatalln("Invalid name format. Please use kebab case (lowercase letters and numbers only, with dashes).")
+		return "", fmt.Errorf("invalid name format. Please use kebab case (lowercase letters and numbers only, with dashes).")
 	}
 	if name == "" {
-		log.Fatalln("Project name cannot be empty.")
+		return "", fmt.Errorf("project name cannot be empty.")
 	}
-	return name
+	return name, nil
 }
 
-func (command *InitCommand) promptForGoModName() string {
+func (command *InitCommand) promptForGoModName() (string, error) {
 	var name string
 	fmt.Print("Enter your go module name: ")
 	fmt.Scanln(&name)
 	if name == "" {
-		log.Fatalln("go module name cannot be empty.")
+		return "", fmt.Errorf("go module name cannot be empty.")
 	}
-	return name
+	return name, nil
 }

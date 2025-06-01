@@ -4,11 +4,8 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"bytes"
 	"fmt"
-	"log"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -20,14 +17,30 @@ import (
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Deploy or remove the application on AWS using AWS SAM.",
+	Long: `This command builds and deploys (or removes) the application using AWS SAM.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+During deployment, it performs the following steps:
+  - Converts template files into Go source files
+  - Builds an optimized Docker image tailored for AWS Lambda environments
+  - Publishes the image to AWS ECR and uses it as the Lambda runtime
+  - Optimizes images found in the 'optimize' folder and uploads them to an S3 bucket
+  - Sets up an AWS CloudFront distribution to serve as a gateway for both S3 and Lambda origins
+  - Cleans up any existing CloudFront distribution if redeploying
+
+This process ensures your application is efficiently built and deployed to AWS.`,
 	RunE: newDeployComand(gothic_cli.NewCli()),
+}
+
+var allowedActions = []string{"delete", "deploy"}
+
+func isValidAction(c string) bool {
+	for _, a := range allowedActions {
+		if a == c {
+			return true
+		}
+	}
+	return false
 }
 
 func newDeployComand(cli gothic_cli.GothicCli) RunEFunc {
@@ -45,20 +58,9 @@ func newDeployComand(cli gothic_cli.GothicCli) RunEFunc {
 			return fmt.Errorf("error: invalid action \"%s\". Allowed values: %v", action, allowedActions)
 
 		}
-		comand.Deploy(stageFlag, action)
-		return nil
-	}
-}
 
-var allowedActions = []string{"delete", "deploy"}
-
-func isValidAction(c string) bool {
-	for _, a := range allowedActions {
-		if a == c {
-			return true
-		}
+		return comand.Deploy(stageFlag, action)
 	}
-	return false
 }
 
 func init() {
@@ -77,60 +79,12 @@ func newDeployCommandCli(cli *gothic_cli.GothicCli) DeployCommand {
 	}
 }
 
-func (command *DeployCommand) cdnAddOrRemoveAssets(stage string, action string) {
-
-	config := command.cli.GetConfig()
-
-	// Read the app ID from the file
-	content, err := os.ReadFile(".gothicCli/app-id.txt")
-	if err != nil {
-		fmt.Println("Error reading file:", err)
-		return
-	}
-
-	// Convert the content to string
-	appID := string(content)
-
-	// Construct the S3 bucket name
-	bucketPublicFolderName := "s3://" + config.ProjectName + "-" + stage + "-" + appID + "/public"
-
-	// Check the action and execute the corresponding command
-	switch action {
-	case "add":
-		addFilesCmd := exec.Command("aws", "s3", "cp", "public", bucketPublicFolderName, "--recursive", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
-		addFilesCmd.Stdout = os.Stdout
-		addFilesCmd.Stdin = os.Stdin
-		addFilesCmd.Stderr = os.Stderr
-
-		// Run the command
-		if err := addFilesCmd.Run(); err != nil {
-			log.Fatalf("Error executing add command: %v", err)
-		}
-		fmt.Println("S3 Files added successfully.")
-
-	case "delete":
-		removeFilesCmd := exec.Command("aws", "s3", "rm", bucketPublicFolderName, "--recursive", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
-		removeFilesCmd.Stdout = os.Stdout
-		removeFilesCmd.Stdin = os.Stdin
-		removeFilesCmd.Stderr = os.Stderr
-
-		// Run the command
-		if err := removeFilesCmd.Run(); err != nil {
-			log.Fatalf("Error executing delete command: %v", err)
-		}
-		fmt.Println("S3 Files deleted successfully.")
-
-	default:
-		log.Fatalf("Invalid action specified: %s. Use 'add' or 'delete'.", action)
-	}
-}
-
-func (command *DeployCommand) setup(stage string, action string) {
+func (command *DeployCommand) setup(stage string) error {
 	config := command.cli.GetConfig()
 
 	// Check if the Deploy configuration is present
 	if config.Deploy == nil {
-		log.Fatalf("Deploy configuration missing in gothic-config.json")
+		return fmt.Errorf("Deploy configuration missing in gothic-config.json")
 	}
 	fmt.Println("SELECTED STAGE: " + stage)
 	// Select the environment based on the --stage parameter
@@ -138,8 +92,7 @@ func (command *DeployCommand) setup(stage string, action string) {
 	// TODO: move this ID to the config file
 	content, err := os.ReadFile(".gothicCli/app-id.txt")
 	if err != nil {
-		fmt.Println("Error reading file:", err)
-		return
+		return fmt.Errorf("error reading file: %v", err)
 	}
 
 	// Convert the content to string
@@ -160,22 +113,23 @@ func (command *DeployCommand) setup(stage string, action string) {
 	}
 	// TODO use native template replace on cli.Template struct methods
 	for _, filePath := range filePaths {
-		if err := command.replaceInFile("gothic-example", config.ProjectName, filePath); err != nil {
-			log.Fatalf("Error replacing project name in file %s: %w", filePath, err)
+		err := command.replaceInFile("gothic-example", config.ProjectName, filePath)
+		if err != nil {
+			return fmt.Errorf("error replacing project name in file %s: %w", filePath, err)
 		}
 	}
 
 	// Check if a custom domain is needed
 	if config.Deploy.CustomDomain {
 		if config.Deploy.Region != "us-east-1" && envConfig.CertificateArn == nil {
-			log.Fatalf("For custom domains, if you set a region other than us-east-1, you must provide a us-east-1 ACM CertificateArn in your environment variables")
+			return fmt.Errorf("for custom domains, if you set a region other than us-east-1, you must provide a us-east-1 ACM CertificateArn in your environment variables")
 		}
 
 		if envConfig.CustomDomain != nil || envConfig.HostedZoneId != nil {
 			templateFile := ".gothicCli/templates/template-custom-domain-with-arn.yaml"
 			if envConfig.CertificateArn != nil {
 				if err := command.replaceInFile("AcmArnReplacerString", *envConfig.CertificateArn, templateFile); err != nil {
-					log.Fatalf("Error replacing certificate ARN in template file: %w", err)
+					return fmt.Errorf("error replacing certificate ARN in template file: %w", err)
 				}
 
 				// TODO use native template replace on cli.Template struct methods
@@ -196,7 +150,7 @@ func (command *DeployCommand) setup(stage string, action string) {
 				command.replaceTimeoutAndMemory(config.Deploy.ServerTimeout, config.Deploy.ServerMemory, "template.yaml")
 			}
 		} else {
-			log.Fatalf("Environment variables customDomain and hostedZoneId are required when deploy.customDomain is set to true")
+			return fmt.Errorf("environment variables customDomain and hostedZoneId are required when deploy.customDomain is set to true")
 		}
 	} else {
 		// TODO use native template replace on cli.Template struct methods
@@ -214,42 +168,13 @@ func (command *DeployCommand) setup(stage string, action string) {
 	command.copyFile(".gothicCli/templates/samconfig-template.toml", "samconfig.toml")
 	// Replace the region
 	if err := command.replaceInFile("regionReplacerString", config.Deploy.Region, "samconfig.toml"); err != nil {
-		log.Fatalf("Error replacing region in file %s: %w", "samconfig.toml", err)
+		return fmt.Errorf("error replacing region in file %s: %w", "samconfig.toml", err)
 	}
-
+	return nil
 }
 
-func (command *DeployCommand) cleanupCache(config gothic_cli.Config, stage string) {
-	// Execute the command to get the CloudFront distribution ID
-	getDistributionIdCMD := exec.Command("aws", "cloudformation", "describe-stacks", "--stack-name", config.ProjectName+"-"+stage, "--query", "Stacks[0].Outputs[?OutputKey=='CloudFrontId'].OutputValue", "--output", "text", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
-
-	// Capture the output of the command
-	var out bytes.Buffer
-	getDistributionIdCMD.Stdout = &out
-	if err := getDistributionIdCMD.Run(); err != nil {
-		log.Fatalf("Error getting CloudFront Id: %v", err)
-	}
-
-	// The result of the command will be the CloudFront distribution ID
-	distributionId := strings.TrimSpace(out.String()) // Remove any extra spaces
-	if distributionId == "" {
-		log.Fatal("CloudFront ID not found")
-	}
-
-	// Now, use the distribution ID in the command to create the invalidation
-	cleanCachesCmd := exec.Command("aws", "cloudfront", "create-invalidation", "--distribution-id", distributionId, "--paths", "/*", "--region", config.Deploy.Region, "--profile", config.Deploy.Profile)
-
-	// Execute the cache cleanup command
-	if err := cleanCachesCmd.Run(); err != nil {
-		log.Fatalf("Error cleaning up deploy files: %v", err)
-	}
-
-	// Print the distribution ID and confirm the cache cleanup
-	fmt.Printf("Successfully reset CloudFront cache for distribution: %s\n", distributionId)
-}
-
-func (command *DeployCommand) Deploy(stage string, action string) {
-	command.setup(stage, action)
+func (command *DeployCommand) Deploy(stage string, action string) error {
+	command.setup(stage)
 	// TODO deal with error
 	command.cli.Templ.Render()
 	// TODO deal with error
@@ -261,8 +186,7 @@ func (command *DeployCommand) Deploy(stage string, action string) {
 
 	content, err := os.ReadFile(".gothicCli/app-id.txt")
 	if err != nil {
-		fmt.Println("Error reading file:", err)
-		return
+		return fmt.Errorf("error reading file:", err)
 	}
 
 	// Convert the content to string
@@ -284,9 +208,10 @@ func (command *DeployCommand) Deploy(stage string, action string) {
 		command.cli.AwsSam.DeleteStack(stage, config.ProjectName, config.Deploy.Profile)
 	}
 	command.cleanup()
+	return nil
 }
 
-func (command *DeployCommand) replaceCustomDomainWithArnValues(customDomain *string, hostedZone *string, arn *string, templateFile string) {
+func (command *DeployCommand) replaceCustomDomainWithArnValues(customDomain *string, hostedZone *string, arn *string, templateFile string) error {
 	// TODO use native template replace on cli.Template struct methods
 	// Call the function that replaces custom domain values
 	command.replaceCustomDomainValues(customDomain, hostedZone, templateFile)
@@ -301,19 +226,21 @@ func (command *DeployCommand) replaceCustomDomainWithArnValues(customDomain *str
 	// TODO use native template replace on cli.Template struct methods
 	// Replace the ARN value in the template file
 	if err := command.replaceInFile("certificateArnReplacerString", `certificateArn: "`+arnValue+`"`, templateFile); err != nil {
-		log.Fatalf("Error adding ARN value to SAM template file: %v", err)
+		return fmt.Errorf("error adding ARN value to SAM template file: %v", err)
 	}
+	return nil
 }
 
-func (command *DeployCommand) replaceTimeoutAndMemory(timeoutValue int, memoryValue int, templateFile string) {
+func (command *DeployCommand) replaceTimeoutAndMemory(timeoutValue int, memoryValue int, templateFile string) error {
 	// TODO use native template replace on cli.Template struct methods
 	if err := command.replaceInFile("timeoutReplacerString", strconv.Itoa(timeoutValue), templateFile); err != nil {
-		log.Fatalf("Error adding timeout value to SAM template file")
+		return fmt.Errorf("error adding timeout value to SAM template file")
 	}
 	// TODO use native template replace on cli.Template struct methods
 	if err := command.replaceInFile("memoryReplacerString", strconv.Itoa(memoryValue), templateFile); err != nil {
-		log.Fatalf("Error adding memory value to SAM template file")
+		return fmt.Errorf("error adding memory value to SAM template file")
 	}
+	return nil
 }
 
 func (command *DeployCommand) copyFile(filePath string, destinationPath string) error {
@@ -336,7 +263,7 @@ func (command *DeployCommand) replaceInFile(originalString string, replaceString
 	return os.WriteFile(filePath, replacedFile, 0644)
 }
 
-func (command *DeployCommand) replaceCustomDomainValues(customDomain *string, hostedZone *string, templateFile string) {
+func (command *DeployCommand) replaceCustomDomainValues(customDomain *string, hostedZone *string, templateFile string) error {
 	// Check if customDomain is not nil before dereferencing it
 	var customDomainValue string
 	if customDomain != nil {
@@ -354,15 +281,16 @@ func (command *DeployCommand) replaceCustomDomainValues(customDomain *string, ho
 	}
 	// TODO use native template replace on cli.Template struct methods
 	if err := command.replaceInFile("customDomainReplacerString", `customDomain: "`+customDomainValue+`"`, templateFile); err != nil {
-		log.Fatalf("Error adding custom domain value to SAM template file: %v", err)
+		return fmt.Errorf("error adding custom domain value to SAM template file: %v", err)
 	}
 	// TODO use native template replace on cli.Template struct methods
 	if err := command.replaceInFile("hostedZoneReplacerString", `hostedZoneId: "`+hostedZoneValue+`"`, templateFile); err != nil {
-		log.Fatalf("Error adding hosted zone value to SAM template file: %v", err)
+		return fmt.Errorf("error adding hosted zone value to SAM template file: %v", err)
 	}
+	return nil
 }
 
-func (command *DeployCommand) replaceEnvVariables(env map[string]interface{}, templateFile string) {
+func (command *DeployCommand) replaceEnvVariables(env map[string]interface{}, templateFile string) error {
 	finalStageMapReplacer := ""
 	finalEnvReplacer := ""
 	// TODO use native template replace on cli.Template struct methods
@@ -384,27 +312,29 @@ func (command *DeployCommand) replaceEnvVariables(env map[string]interface{}, te
 
 	// Replace in the file with the map content
 	if err := command.replaceInFile("stageMapStringReplacer", finalStageMapReplacer, templateFile); err != nil {
-		log.Fatalf("Error adding stage map value to SAM template file: %v", err)
+		return fmt.Errorf("error adding stage map value to SAM template file: %v", err)
 	}
 
 	if err := command.replaceInFile("EnvStringReplacer", finalEnvReplacer, templateFile); err != nil {
-		log.Fatalf("Error adding env value to SAM template file: %v", err)
+		return fmt.Errorf("error adding env value to SAM template file: %v", err)
 	}
+	return nil
 }
 
-func (command *DeployCommand) replaceStageBucketAndLambdaName(lambdaName string, bucketName string, stage string, templateFile string) {
+func (command *DeployCommand) replaceStageBucketAndLambdaName(lambdaName string, bucketName string, stage string, templateFile string) error {
 	// TODO use native template replace on cli.Template struct methods
 	if err := command.replaceInFile("lambdaNameReplacerString", `LambdaName: "`+lambdaName+`"`, templateFile); err != nil {
-		log.Fatalf("Error adding lambda value to SAM template file")
+		return fmt.Errorf("error adding lambda value to SAM template file")
 	}
 
 	if err := command.replaceInFile("bucketNameReplacerString", `BucketName: "`+bucketName+`"`, templateFile); err != nil {
-		log.Fatalf("Error adding bucket value to SAM template file")
+		return fmt.Errorf("error adding bucket value to SAM template file")
 	}
 
 	if err := command.replaceInFile("stageReplacerString", stage, templateFile); err != nil {
-		log.Fatalf("Error adding stage value to SAM template file")
+		return fmt.Errorf("error adding stage value to SAM template file")
 	}
+	return nil
 }
 
 func (command *DeployCommand) cleanup() {

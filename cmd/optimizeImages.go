@@ -20,24 +20,24 @@ import (
 	webp "golang.org/x/image/webp"
 )
 
-// optimizeImagesCmd represents the optimizeImages command
 var optimizeImagesCmd = &cobra.Command{
 	Use:   "optimize-images",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Generate optimized and blurred image variants in the public folder",
+	Long: `Scans the "optimize" folder and generates optimized image assets in the "public" directory. 
+For each image, a corresponding folder is created containing:
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+  - The original image
+  - A blurred version (default: 20% of the original resolution)
+
+You can customize the blur resolution by modifying the relevant setting in the "gothic-config.json" file.`,
 	RunE: newOptimizeImagesComand(gothic_cli.NewCli()),
 }
 
 func newOptimizeImagesComand(cli gothic_cli.GothicCli) RunEFunc {
 	return func(cmd *cobra.Command, args []string) error {
 		comand := NewImgOptimizationCommandCli(&cli)
-		comand.OptimizeImages()
-		return nil
+
+		return comand.OptimizeImages()
 	}
 }
 
@@ -55,22 +55,11 @@ func NewImgOptimizationCommandCli(cli *gothic_cli.GothicCli) ImgOptimizationComm
 	}
 }
 
-func (command *ImgOptimizationCommand) OptimizeImages() {
+func (command *ImgOptimizationCommand) OptimizeImages() error {
 	command.setup()
 	// TODO change it to struct properties
 	inputDir := "./optimize"
 	outputDir := "./public"
-	// TODO Remove this import
-	// TODO change it to struct properties and make a for loop over slice
-	downloadResizeCMD := exec.Command("go", "mod", "download", "github.com/nfnt/resize")
-	downloadWebpCMD := exec.Command("go", "mod", "download", "golang.org/x/image")
-	// Make sure needed packages have been downloaded
-	if err := downloadResizeCMD.Run(); err != nil {
-		log.Fatalf("Error executing add command: %v", err)
-	}
-	if err := downloadWebpCMD.Run(); err != nil {
-		log.Fatalf("Error executing add command: %v", err)
-	}
 
 	config := command.cli.GetConfig()
 
@@ -93,15 +82,13 @@ func (command *ImgOptimizationCommand) OptimizeImages() {
 			ext := filepath.Ext(file.Name())
 
 			if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
-				fmt.Printf("Error creating directory %s: %v\n", imageDir, err)
-				continue
+				return fmt.Errorf("error creating directory %s: %v", imageDir, err)
 			}
 
 			// Open the image file
 			imgFile, err := os.Open(inputPath)
 			if err != nil {
-				fmt.Printf("Error opening file %s: %v\n", inputPath, err)
-				continue
+				return fmt.Errorf("error opening file %s: %v", inputPath, err)
 			}
 
 			// Decode the image
@@ -114,14 +101,12 @@ func (command *ImgOptimizationCommand) OptimizeImages() {
 			case ".webp":
 				img, err = webp.Decode(imgFile)
 			default:
-				fmt.Printf("Unsupported file format: %s\n", ext)
 				imgFile.Close()
-				continue
+				return fmt.Errorf("error unsupported file format: %s", ext)
 			}
 			imgFile.Close()
 			if err != nil {
-				fmt.Printf("Error decoding image %s: %v\n", inputPath, err)
-				continue
+				return fmt.Errorf("error decoding image %s: %v", inputPath, err)
 			}
 
 			// Get original dimensions
@@ -142,8 +127,7 @@ func (command *ImgOptimizationCommand) OptimizeImages() {
 			originalPath := filepath.Join(imageDir, "original"+ext)
 			originalFile, err := os.Create(originalPath)
 			if err != nil {
-				fmt.Printf("Error creating original file %s: %v\n", originalPath, err)
-				continue
+				return fmt.Errorf("error creating original file %s: %v", originalPath, err)
 			}
 			defer originalFile.Close()
 
@@ -154,42 +138,42 @@ func (command *ImgOptimizationCommand) OptimizeImages() {
 			blurredPath := filepath.Join(imageDir, "blurred"+ext)
 			blurredFile, err := os.Create(blurredPath)
 			if err != nil {
-				fmt.Printf("Error creating blurred file %s: %v\n", blurredPath, err)
-				continue
+				return fmt.Errorf("error creating blurred file %s: %v", blurredPath, err)
 			}
 			defer blurredFile.Close()
 
 			switch ext {
 			case ".png":
 				if err := png.Encode(originalFile, img); err != nil {
-					fmt.Printf("Error saving original PNG image %s: %v\n", originalPath, err)
+					return fmt.Errorf("error saving original PNG image %s: %v", originalPath, err)
 				}
 				if err := png.Encode(blurredFile, resizedImg); err != nil {
-					fmt.Printf("Error saving blurred PNG image %s: %v\n", originalPath, err)
+					return fmt.Errorf("error saving blurred PNG image %s: %v", originalPath, err)
 				}
 
 			case ".jpg", ".jpeg":
 				if err := jpeg.Encode(originalFile, img, &jpeg.Options{Quality: 100}); err != nil {
-					fmt.Printf("Error saving original JPEG image %s: %v\n", originalPath, err)
+					return fmt.Errorf("error saving original JPEG image %s: %v", originalPath, err)
 				}
 				if err := jpeg.Encode(blurredFile, resizedImg, &jpeg.Options{Quality: 20}); err != nil {
-					fmt.Printf("Error saving blurred image %s: %v\n", blurredPath, err)
+					return fmt.Errorf("error saving blurred image %s: %v", blurredPath, err)
 				}
 			case ".webp":
 				if err := png.Encode(originalFile, img); err != nil {
-					fmt.Printf("Error saving original WebP image %s: %v\n", originalPath, err)
+					return fmt.Errorf("error saving original WebP image %s: %v", originalPath, err)
 				}
 				if err := png.Encode(blurredFile, resizedImg); err != nil {
-					fmt.Printf("Error saving blurred WebP image %s: %v\n", originalPath, err)
+					return fmt.Errorf("error saving blurred WebP image %s: %v", originalPath, err)
 				}
 			}
 		} else {
-			fmt.Println("The 'optimizeImages' key was not found in gothic-config.json.")
+			return fmt.Errorf("error the 'optimizeImages' key was not found in gothic-config.json")
 		}
 
 	}
 
 	fmt.Println("Resizing complete!")
+	return nil
 }
 
 func (command *ImgOptimizationCommand) setup() {
