@@ -18,7 +18,6 @@ type GothicCli struct {
 	Templates helpers.TemplateHelper
 	Tailwind  helpers.TailwindHelper
 	Templ     helpers.TemplHelper
-	Air       helpers.AirHelper
 	Logger    *slog.Logger
 	AwsSam    helpers.AwsSamHelper
 	AWS       helpers.AwsHelper
@@ -42,7 +41,6 @@ func NewCli() GothicCli {
 		Templates: helpers.NewTemplateHelper(),
 		Tailwind:  helpers.NewTailwindHelper(),
 		Templ:     helpers.NewTemplHelper(),
-		Air:       helpers.NewAirHelper(),
 		AwsSam:    helpers.NewAwsSamHelper(),
 		AWS:       helpers.NewAwsHelper(),
 		Logger:    helpers.NewLogger("error", false, os.Stdout),

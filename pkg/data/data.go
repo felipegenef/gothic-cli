@@ -37,39 +37,13 @@ var tailwindCSSWindows embed.FS
 //go:embed tailwindcss-mac
 var tailwindCSSMac embed.FS
 
-var airToml string = `root = "."
-tmp_dir = "tmp"
-
-[build]
-  bin = "{{.MainBinaryFileName}}"
-  cmd = "./{{.TailWindFileName}} -i src/css/app.css -o public/styles.css --minify && gothic-cli build && go build -o {{.MainBinaryFileName}} main.go"
-    
-  delay = 2
-  exclude_dir = ["assets", "tmp", "vendor","public"]
-  exclude_file = []
-  exclude_regex = [".*_templ.go"]
-  exclude_unchanged = false
-  follow_symlink = false
-  full_bin = ""
-  include_dir = []
-  include_ext = ["go", "tpl", "tmpl", "templ", "html"]
-  kill_delay = "0s"
-  log = "build-errors.log"
-  send_interrupt = false
-  stop_on_error = true
-
-[log]
-  time = false
-
-[misc]
-  clean_on_exit = false`
-
 var envs string = `HTTP_LISTEN_ADDR: ":8080"
 LOCAL_SERVE: "true"`
 
 var gitIgnore string = `.env
 bin
 *_templ.go*
+*templ.txt
 node_modules
 .aws-sam
 tmp
@@ -96,7 +70,6 @@ type GothicCliData struct {
 	GitIgnore                     string
 	EnvSample                     string
 	Env                           string
-	AirToml                       string
 	Tailwind                      TailWindCSS
 	GoticConfig                   embed.FS
 	Readme                        embed.FS
@@ -163,7 +136,6 @@ var DefaultCLIData = GothicCliData{
 	GitIgnore: gitIgnore,
 	EnvSample: envs,
 	Env:       envs,
-	AirToml:   airToml,
 	Tailwind: TailWindCSS{
 		Mac:     tailwindCSSMac,
 		Windows: tailwindCSSWindows,

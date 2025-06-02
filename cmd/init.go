@@ -26,7 +26,6 @@ var initCmd = &cobra.Command{
 
 This includes:
   - A precompiled Tailwind binary
-  - An Air.toml configuration file
   - A gothic-config.json file
   - A basic example app to help you get started
   - A link to the official documentation for further guidance`,
@@ -156,13 +155,7 @@ func (command *InitCommand) createHiddenFiles() error {
 	id := re.ReplaceAllString(lowerId, "-")
 
 	var wg sync.WaitGroup
-	wg.Add(4)
-
-	go func() {
-		os.WriteFile(".air.toml", []byte(command.gothicCliData.AirToml), 0644)
-		command.cli.Templates.UpdateFromTemplate(".air.toml", ".air.toml", command.cli.Templates.InitCMDTemplateInfo)
-		wg.Done()
-	}()
+	wg.Add(3)
 
 	go func() {
 		os.WriteFile(".gothicCli/app-id.txt", []byte(id), 0644)
