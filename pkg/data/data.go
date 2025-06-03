@@ -61,6 +61,7 @@ type TailWindCSS struct {
 }
 
 type GothicCliData struct {
+	TemplateFiles                 map[string]embed.FS
 	InitialFiles                  map[string]embed.FS
 	PublicFolderAssets            map[string]embed.FS
 	InitialDirs                   []string
@@ -87,13 +88,14 @@ var DefaultCLIData = GothicCliData{
 		"public/imageExample/original.jpeg": publicFolder,
 		"public/favicon.ico":                publicFolder,
 	},
-	InitialFiles: map[string]embed.FS{
-		// eemplate files
+	TemplateFiles: map[string]embed.FS{
 		".gothicCli/templates/Dockerfile-template":                  templatesFolder,
 		".gothicCli/templates/samconfig-template.toml":              templatesFolder,
 		".gothicCli/templates/template-custom-domain-with-arn.yaml": templatesFolder,
 		".gothicCli/templates/template-custom-domain.yaml":          templatesFolder,
 		".gothicCli/templates/template-default.yaml":                templatesFolder,
+	},
+	InitialFiles: map[string]embed.FS{
 		// util files
 		"src/utils/handler.go": srcFolder,
 		// page files

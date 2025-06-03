@@ -33,7 +33,5 @@ func (t *TemplHelper) Watch() error {
 			Proxy: "http://localhost:8080",
 		})
 	}()
-	// TODO only return when ready. Check for proxy address
-	// If timed out return error
 	return nil
 }

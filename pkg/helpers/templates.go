@@ -8,7 +8,7 @@ import (
 	"text/template"
 )
 
-type InitCMDTemplateInfo struct {
+type InitCmdTemplateInfo struct {
 	ProjectName            string
 	GoModName              string
 	TailWindFileName       string
@@ -20,16 +20,42 @@ type InitCMDTemplateInfo struct {
 	ComponentName          string
 }
 
-type BuildCMDTemplateInfo struct {
+type RouteTemplateInfo struct {
 	PageName      string
 	RouteName     string
 	ComponentName string
 	GoModName     string
 }
 
+type EnvValueInfo struct {
+	Value interface{}
+	Key   string
+}
+type StageTemplateInfo struct {
+	Name           string
+	BucketName     string
+	LambdaName     string
+	CustomDomain   string
+	HostedZone     string
+	CertificateArn string
+	Env            []EnvValueInfo
+}
+
+type SamYamlTemplateInfo struct {
+	Timeout           int
+	MemorySize        int
+	UsedTemplateName  string
+	ProjectName       string
+	StageTemplateInfo StageTemplateInfo
+}
+type SamTomlTemplateInfo struct {
+	StackName string
+	AwsRegion string
+}
+
 type TemplateHelper struct {
-	InitCMDTemplateInfo  InitCMDTemplateInfo
-	BuildCMDTemplateInfo BuildCMDTemplateInfo
+	InitCmdTemplateInfo InitCmdTemplateInfo
+	RouteTemplateInfo   RouteTemplateInfo
 }
 
 func NewTemplateHelper() TemplateHelper {
@@ -76,4 +102,22 @@ func (t *TemplateHelper) CreateFromTemplate(fileTemplate embed.FS, templateFileP
 	}
 
 	return nil
+}
+
+func (t *TemplateHelper) CopyFile(filePath string, destinationPath string) error {
+	fileContent, err := os.ReadFile(filePath)
+
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(destinationPath, fileContent, 0644)
+}
+
+func (t *TemplateHelper) CopyFromFs(fileTemplate embed.FS, templateFilePath string, outputFilePath string) error {
+	templateBytes, err := fs.ReadFile(fileTemplate, templateFilePath)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(outputFilePath, templateBytes, 0644)
 }

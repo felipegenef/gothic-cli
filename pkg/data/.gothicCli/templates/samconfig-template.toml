@@ -3,7 +3,7 @@
 version = 0.1
 
 [default.global.parameters]
-stack_name = "gothic-example"
+stack_name = "{{.StackName}}"
 
 [default.build.parameters]
 parallel = true
@@ -16,8 +16,8 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
 resolve_s3 = true
 resolve_image_repos = true
-s3_prefix = "gothic-example"
-region = "regionReplacerString"
+s3_prefix = "{{.StackName}}"
+region = "{{.AwsRegion}}"
 disable_rollback = true
 
 [default.package.parameters]

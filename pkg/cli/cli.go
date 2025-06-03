@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 type GothicCli struct {
 	config  *Config
+	appID   *string
 	Runtime string
 
 	Templates helpers.TemplateHelper
@@ -47,6 +49,21 @@ func NewCli() GothicCli {
 	}
 
 	return cli
+}
+
+func (cli *GothicCli) GetAppId() (string, error) {
+	if cli.appID != nil {
+		return *cli.appID, nil
+	}
+	content, err := os.ReadFile(".gothicCli/app-id.txt")
+	if err != nil {
+		return "", fmt.Errorf("error reading file: %v", err)
+	}
+
+	// Convert the content to string
+	appID := string(content)
+	cli.appID = &appID
+	return appID, nil
 }
 
 func (cli *GothicCli) GetConfig() Config {

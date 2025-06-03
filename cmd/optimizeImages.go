@@ -8,9 +8,7 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
-	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	gothic_cli "github.com/felipegenef/gothic-cli/pkg/cli"
@@ -30,15 +28,7 @@ For each image, a corresponding folder is created containing:
   - A blurred version (default: 20% of the original resolution)
 
 You can customize the blur resolution by modifying the relevant setting in the "gothic-config.json" file.`,
-	RunE: newOptimizeImagesComand(gothic_cli.NewCli()),
-}
-
-func newOptimizeImagesComand(cli gothic_cli.GothicCli) RunEFunc {
-	return func(cmd *cobra.Command, args []string) error {
-		comand := NewImgOptimizationCommandCli(&cli)
-
-		return comand.OptimizeImages()
-	}
+	RunE: newOptimizeImagesCommand(gothic_cli.NewCli()),
 }
 
 func init() {
@@ -46,39 +36,47 @@ func init() {
 }
 
 type ImgOptimizationCommand struct {
-	cli *gothic_cli.GothicCli
+	cli       *gothic_cli.GothicCli
+	inputDir  string
+	outputDir string
 }
 
 func NewImgOptimizationCommandCli(cli *gothic_cli.GothicCli) ImgOptimizationCommand {
 	return ImgOptimizationCommand{
-		cli: cli,
+		cli:       cli,
+		inputDir:  "./optimize",
+		outputDir: "./public",
+	}
+}
+
+func newOptimizeImagesCommand(cli gothic_cli.GothicCli) RunEFunc {
+	return func(cmd *cobra.Command, args []string) error {
+		command := NewImgOptimizationCommandCli(&cli)
+
+		return command.OptimizeImages()
 	}
 }
 
 func (command *ImgOptimizationCommand) OptimizeImages() error {
-	command.setup()
-	// TODO change it to struct properties
-	inputDir := "./optimize"
-	outputDir := "./public"
 
 	config := command.cli.GetConfig()
 
 	// Create the output directory if it doesn't exist
-	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
-		panic(err)
+	if err := os.MkdirAll(command.outputDir, os.ModePerm); err != nil {
+		return err
 	}
 
 	// Read the files from the input directory
-	files, err := os.ReadDir(inputDir)
+	files, err := os.ReadDir(command.inputDir)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	for _, file := range files {
 		if !file.IsDir() {
-			inputPath := filepath.Join(inputDir, file.Name())
+			inputPath := filepath.Join(command.inputDir, file.Name())
 			baseName := file.Name()[:len(file.Name())-len(filepath.Ext(file.Name()))]
-			imageDir := filepath.Join(outputDir, baseName)
+			imageDir := filepath.Join(command.outputDir, baseName)
 			ext := filepath.Ext(file.Name())
 
 			if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
@@ -174,28 +172,4 @@ func (command *ImgOptimizationCommand) OptimizeImages() error {
 
 	fmt.Println("Resizing complete!")
 	return nil
-}
-
-func (command *ImgOptimizationCommand) setup() {
-	// TODO remove this import
-	// TODO change it to struct properties and make a for loop over slice
-	getResizeCMD := exec.Command("go", "get", "github.com/nfnt/resize")
-	getWebpCMD := exec.Command("go", "get", "golang.org/x/image")
-	// Make sure needed packages have been added to go.mod
-	if err := getResizeCMD.Run(); err != nil {
-		log.Fatalf("Error executing add command: %v", err)
-	}
-	if err := getWebpCMD.Run(); err != nil {
-		log.Fatalf("Error executing add command: %v", err)
-	}
-	// TODO change it to struct properties and make a for loop over slice
-	downloadResizeCMD := exec.Command("go", "mod", "download", "github.com/nfnt/resize")
-	downloadWebpCMD := exec.Command("go", "mod", "download", "golang.org/x/image")
-	// Make sure needed packages have been downloaded
-	if err := downloadResizeCMD.Run(); err != nil {
-		log.Fatalf("Error executing add command: %v", err)
-	}
-	if err := downloadWebpCMD.Run(); err != nil {
-		log.Fatalf("Error executing add command: %v", err)
-	}
 }

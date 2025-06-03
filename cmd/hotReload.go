@@ -29,15 +29,7 @@ var hotReloadCmd = &cobra.Command{
 	Long: `This command uses Templ and Tailwind to enable real-time reloading for local development.
 
 It allows you to develop and debug your Gothic app more efficiently, with changes instantly reflected in the browser as you save your files.`,
-	RunE: newHotReloadComand(gothic_cli.NewCli()),
-}
-
-func newHotReloadComand(cli gothic_cli.GothicCli) RunEFunc {
-	return func(cmd *cobra.Command, args []string) error {
-		comand := newHotReloadCommandCli(&cli)
-
-		return comand.HotReload()
-	}
+	RunE: newHotReloadCommand(gothic_cli.NewCli()),
 }
 
 func init() {
@@ -61,7 +53,7 @@ func newHotReloadCommandCli(cli *gothic_cli.GothicCli) HotReloadCommand {
 	var mainBinary string = "tmp/main"
 	if runtime.GOOS == "windows" {
 		tailwindBinary = "./tailwindcss.exe"
-		mainBinary = "tmp/main.exes"
+		mainBinary = "tmp/main.exe"
 	}
 	return HotReloadCommand{
 		cli:               cli,
@@ -72,6 +64,40 @@ func newHotReloadCommandCli(cli *gothic_cli.GothicCli) HotReloadCommand {
 		excludeRegex:      *regexp.MustCompile(`.*_templ\.go$`),
 	}
 }
+
+func newHotReloadCommand(cli gothic_cli.GothicCli) RunEFunc {
+	return func(cmd *cobra.Command, args []string) error {
+		command := newHotReloadCommandCli(&cli)
+
+		return command.HotReload()
+	}
+}
+
+func (command *HotReloadCommand) HotReload() error {
+	go command.watchTailwindChanges()
+	// Wait for tailwind process to render css for the first time
+	time.Sleep(4 * time.Second)
+	go command.watchForChanges()
+	go command.watchTemplChanges()
+
+	banner := `
+ ██████╗  ██████╗ ████████╗██╗  ██╗██╗ ██████╗     █████╗ ██████╗ ██████╗ 
+██╔════╝ ██╔═══██╗╚══██╔══╝██║  ██║██║██╔════╝    ██╔══██╗██╔══██╗██╔══██╗
+██║  ███╗██║   ██║   ██║   ███████║██║██║         ███████║██████╔╝██████╔╝
+██║   ██║██║   ██║   ██║   ██╔══██║██║██║         ██╔══██║██╔═══╝ ██╔═══╝ 
+╚██████╔╝╚██████╔╝   ██║   ██║  ██║██║╚██████╗    ██║  ██║██║     ██║     
+ ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝    ╚═╝  ╚═╝╚═╝     ╚═╝     
+
+🚀 Gothic App is up and running!
+🌐 Listening on: http://127.0.0.1:7331
+🔥  Mode: HOT RELOAD ENABLED
+`
+	fmt.Println(banner)
+
+	select {}
+
+}
+
 func (command *HotReloadCommand) isExcludedDir(path string) bool {
 	for _, d := range command.excludedDirs {
 		if strings.Contains(path, string(os.PathSeparator)+d+string(os.PathSeparator)) {
@@ -81,47 +107,11 @@ func (command *HotReloadCommand) isExcludedDir(path string) bool {
 	return false
 }
 
-func (command *HotReloadCommand) rebuild() {
-	command.mutex.Lock()
-	defer command.mutex.Unlock()
-	if command.runCancel != nil {
-		log.Println("Stopping previous go run process...")
-		command.runCancel()
-		command.runCancel = nil
-	}
-
-	log.Println("Build app...")
-	buildCmd := exec.Command("go", "build", "-o", command.mainBinaryName, "main.go")
-	buildCmd.Stdout = os.Stdout
-	buildCmd.Stderr = os.Stderr
-	if err := buildCmd.Run(); err != nil {
-		log.Println("Error building app", err)
-		return
-	}
-
-	log.Println("Running app...")
-	ctx, cancel := context.WithCancel(context.Background())
-	command.runCancel = cancel
-
-	runCmd := exec.CommandContext(ctx, command.mainBinaryName)
-	runCmd.Stdout = os.Stdout
-	runCmd.Stderr = os.Stderr
-	command.runCmd = runCmd
-	go func() {
-		if err := runCmd.Run(); err != nil {
-			if ctx.Err() == nil {
-				log.Println("Error running app:", err)
-			}
-		}
-	}()
-
-}
-
 func (command *HotReloadCommand) watchForChanges() {
 	command.rebuild()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal("Error creating watcher:", err)
+		panic(fmt.Sprintf("error creating watcher: %v", err))
 	}
 	defer watcher.Close()
 	err = filepath.Walk("src", func(path string, info os.FileInfo, err error) error {
@@ -137,7 +127,7 @@ func (command *HotReloadCommand) watchForChanges() {
 		return nil
 	})
 	if err != nil {
-		log.Fatal("Error walking through directories:", err)
+		panic(fmt.Sprintf("error walking through directories: %v", err))
 	}
 
 	debounce := time.NewTimer(0)
@@ -156,7 +146,7 @@ func (command *HotReloadCommand) watchForChanges() {
 			go command.rebuild()
 		case err, ok := <-watcher.Errors:
 			if !ok {
-				return
+				panic(fmt.Sprintf("error reloading app: %v", err))
 			}
 			log.Println("Watcher error:", err)
 		}
@@ -188,8 +178,7 @@ func (command *HotReloadCommand) watchTailwindChanges() {
 
 	// Start the process asynchronously (non-blocking, like Node's spawn)
 	if err := tailWindCmd.Start(); err != nil {
-		log.Printf("Failed to start Tailwind watch process: %v", err)
-		return
+		panic(fmt.Sprintf("Failed to start Tailwind watch process: %v", err))
 	}
 
 	log.Printf("Tailwind is watching with PID %d", tailWindCmd.Process.Pid)
@@ -198,7 +187,7 @@ func (command *HotReloadCommand) watchTailwindChanges() {
 	go func() {
 		err := tailWindCmd.Wait()
 		if err != nil {
-			log.Printf("Tailwind process exited with error: %v", err)
+			panic(fmt.Sprintf("Tailwind process exited with error: %v", err))
 		} else {
 			log.Println("Tailwind process exited normally.")
 		}
@@ -215,27 +204,37 @@ func (command *HotReloadCommand) watchTemplChanges() {
 	})
 }
 
-func (command *HotReloadCommand) HotReload() error {
-	go command.watchTailwindChanges()
-	// Wait for tailwind process to start
-	time.Sleep(2 * time.Second)
-	go command.watchForChanges()
-	go command.watchTemplChanges()
+func (command *HotReloadCommand) rebuild() {
+	command.mutex.Lock()
+	defer command.mutex.Unlock()
+	if command.runCancel != nil {
+		log.Println("Stopping previous go run process...")
+		command.runCancel()
+		command.runCancel = nil
+	}
 
-	banner := `
- ██████╗  ██████╗ ████████╗██╗  ██╗██╗ ██████╗     █████╗ ██████╗ ██████╗ 
-██╔════╝ ██╔═══██╗╚══██╔══╝██║  ██║██║██╔════╝    ██╔══██╗██╔══██╗██╔══██╗
-██║  ███╗██║   ██║   ██║   ███████║██║██║         ███████║██████╔╝██████╔╝
-██║   ██║██║   ██║   ██║   ██╔══██║██║██║         ██╔══██║██╔═══╝ ██╔═══╝ 
-╚██████╔╝╚██████╔╝   ██║   ██║  ██║██║╚██████╗    ██║  ██║██║     ██║     
- ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝    ╚═╝  ╚═╝╚═╝     ╚═╝     
+	log.Println("Build app...")
+	buildCmd := exec.Command("go", "build", "-o", command.mainBinaryName, "main.go")
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		panic(fmt.Sprintf("error building app: %v", err))
+	}
 
-🚀 Gothic App is up and running!
-🌐 Listening on: http://127.0.0.1:7331
-♻️  Mode: HOT RELOAD ENABLED
-`
-	fmt.Println(banner)
+	log.Println("Running app...")
+	ctx, cancel := context.WithCancel(context.Background())
+	command.runCancel = cancel
 
-	select {}
+	runCmd := exec.CommandContext(ctx, command.mainBinaryName)
+	runCmd.Stdout = os.Stdout
+	runCmd.Stderr = os.Stderr
+	command.runCmd = runCmd
+	go func() {
+		if err := runCmd.Run(); err != nil {
+			if ctx.Err() == nil {
+				panic(fmt.Sprintf("error running app: %v", err))
+			}
+		}
+	}()
 
 }

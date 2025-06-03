@@ -1,14 +1,15 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  gothic-example
+ This "{{.ProjectName}}" Sam stack is a Gothic App based on the "{{.UsedTemplateName}}" template. You can extend the infrastructure as code by adding additional resources directly to the template file.
 
-  Sample SAM Template for gothic-cli
 
 Globals:
   Function:
-    Timeout: timeoutReplacerString
-    MemorySize: memoryReplacerString
+# Auto-generated code during deployment. Do not modify this section directly.
+# To make changes, update the values in gothic-config.json instead.
+    Timeout: {{.Timeout}}
+    MemorySize: {{.MemorySize}}
 
 Parameters:
   Stage:
@@ -18,13 +19,17 @@ Parameters:
 
 Mappings:
   StagesMap:
-    stageReplacerString:
-      bucketNameReplacerString
-      lambdaNameReplacerString
-      customDomainReplacerString
-      hostedZoneReplacerString
+  # Auto-generated code during deployment. Do not modify this section directly.
+  # To make changes, update the values in gothic-config.json instead.
+    {{.StageTemplateInfo.Name}}:
+      {{.StageTemplateInfo.BucketName}}
+      {{.StageTemplateInfo.LambdaName}}
+      {{.StageTemplateInfo.CustomDomain}}
+      {{.StageTemplateInfo.HostedZone}}
+      {{ range .StageTemplateInfo.Env }}
+      "{{ .Key }}":  {{ .Value }}
+      {{ end }}
       HttpServerPort: ":8080" # If changing this port Lambda Web adapter will not work unless you change the env variable PORT
-stageMapStringReplacer
 
 
 # This was added for multi region lambda server support. Check out CloudFrontDistribution Origins to see.
@@ -43,8 +48,12 @@ Resources:
         - x86_64
       Environment:
         Variables:
+          # Auto-generated code during deployment. Do not modify this section directly.
+          # To make changes, update the values in gothic-config.json instead.
           HTTP_LISTEN_ADDR: !FindInMap [StagesMap, !Ref Stage, HttpServerPort] ## Labda WEB adapters use port 8080 by default.
-EnvStringReplacer
+          {{ range .StageTemplateInfo.Env }}
+          "{{ .Key }}": !FindInMap [StagesMap, !Ref Stage, "{{ .Key }}"]
+          {{ end }}
       FunctionUrlConfig:
         AuthType: AWS_IAM
     Metadata:

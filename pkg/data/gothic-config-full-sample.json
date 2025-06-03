@@ -11,12 +11,6 @@
     "customDomain": false,
     "profile": "default",
     "stages": {
-      "default": {
-        "hostedZoneId": null,
-        "customDomain": null,
-        "certificateArn": null,
-        "env": {}
-      },
       "dev": {
         "hostedZoneId": null,
         "customDomain": null,

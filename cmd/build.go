@@ -16,13 +16,28 @@ var buildCmd = &cobra.Command{
 	RunE:  newBuildCommand(gothic_cli.NewCli()),
 }
 
-func newBuildCommand(cli gothic_cli.GothicCli) RunEFunc {
-	return func(cmd *cobra.Command, args []string) error {
-		return cli.Templ.Render()
-	}
-}
-
 func init() {
 	rootCmd.AddCommand(buildCmd)
 
+}
+
+type BuildCommand struct {
+	cli *gothic_cli.GothicCli
+}
+
+func newBuildCommandCli(cli *gothic_cli.GothicCli) BuildCommand {
+	return BuildCommand{
+		cli: cli,
+	}
+}
+
+func (command *BuildCommand) Build() error {
+	return command.cli.Templ.Render()
+}
+
+func newBuildCommand(cli gothic_cli.GothicCli) RunEFunc {
+	return func(cmd *cobra.Command, args []string) error {
+		command := newBuildCommandCli(&cli)
+		return command.Build()
+	}
 }
