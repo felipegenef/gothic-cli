@@ -59,7 +59,7 @@ func newHotReloadCommandCli(cli *gothic_cli.GothicCli) HotReloadCommand {
 		cli:               cli,
 		tailwindFile:      tailwindBinary,
 		mainBinaryName:    mainBinary,
-		excludedDirs:      []string{"assets", "tmp", "vendor", "public"},
+		excludedDirs:      []string{"assets", "tmp", "vendor", "public", "routes"},
 		watchedExtensions: []string{".go", ".tpl", ".tmpl", ".templ", ".html"},
 		excludeRegex:      *regexp.MustCompile(`.*_templ\.go$`),
 	}
@@ -111,7 +111,7 @@ func (command *HotReloadCommand) watchForChanges() {
 	command.rebuild()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		panic(fmt.Sprintf("error creating watcher: %v", err))
+		fmt.Printf("error creating watcher: %v", err)
 	}
 	defer watcher.Close()
 	err = filepath.Walk("src", func(path string, info os.FileInfo, err error) error {
@@ -127,7 +127,7 @@ func (command *HotReloadCommand) watchForChanges() {
 		return nil
 	})
 	if err != nil {
-		panic(fmt.Sprintf("error walking through directories: %v", err))
+		fmt.Printf("error walking through directories: %v", err)
 	}
 
 	debounce := time.NewTimer(0)
@@ -146,7 +146,7 @@ func (command *HotReloadCommand) watchForChanges() {
 			go command.rebuild()
 		case err, ok := <-watcher.Errors:
 			if !ok {
-				panic(fmt.Sprintf("error reloading app: %v", err))
+				fmt.Printf("error reloading app: %v", err)
 			}
 			log.Println("Watcher error:", err)
 		}
@@ -178,7 +178,7 @@ func (command *HotReloadCommand) watchTailwindChanges() {
 
 	// Start the process asynchronously (non-blocking, like Node's spawn)
 	if err := tailWindCmd.Start(); err != nil {
-		panic(fmt.Sprintf("Failed to start Tailwind watch process: %v", err))
+		fmt.Printf("Failed to start Tailwind watch process: %v", err)
 	}
 
 	log.Printf("Tailwind is watching with PID %d", tailWindCmd.Process.Pid)
@@ -187,7 +187,7 @@ func (command *HotReloadCommand) watchTailwindChanges() {
 	go func() {
 		err := tailWindCmd.Wait()
 		if err != nil {
-			panic(fmt.Sprintf("Tailwind process exited with error: %v", err))
+			fmt.Printf("Tailwind process exited with error: %v", err)
 		} else {
 			log.Println("Tailwind process exited normally.")
 		}
@@ -212,13 +212,21 @@ func (command *HotReloadCommand) rebuild() {
 		command.runCancel()
 		command.runCancel = nil
 	}
+	log.Println("Rebuild Templ...")
+	if err := command.cli.Templ.Render(); err != nil {
+		fmt.Printf("error generating templ files: %v", err)
+	}
+	log.Println("Build routes...")
+	if err := command.cli.FileBasedRouter.Render(command.cli.GetConfig().GoModName); err != nil {
+		fmt.Printf("error building routes: %v", err)
+	}
 
 	log.Println("Build app...")
 	buildCmd := exec.Command("go", "build", "-o", command.mainBinaryName, "main.go")
 	buildCmd.Stdout = os.Stdout
 	buildCmd.Stderr = os.Stderr
 	if err := buildCmd.Run(); err != nil {
-		panic(fmt.Sprintf("error building app: %v", err))
+		fmt.Printf("error building app: %v", err)
 	}
 
 	log.Println("Running app...")
@@ -232,7 +240,7 @@ func (command *HotReloadCommand) rebuild() {
 	go func() {
 		if err := runCmd.Run(); err != nil {
 			if ctx.Err() == nil {
-				panic(fmt.Sprintf("error running app: %v", err))
+				fmt.Printf("error running app: %v", err)
 			}
 		}
 	}()

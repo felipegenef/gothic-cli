@@ -13,7 +13,7 @@ func NewTailwindHelper() TailwindHelper {
 	return TailwindHelper{}
 }
 
-func (t *TailwindHelper) Build() error {
+func (helper *TailwindHelper) Build() error {
 	tailwindCmd := exec.Command("make", "css")
 	tailwindCmd.Stdout = os.Stdout
 	tailwindCmd.Stdin = os.Stdin

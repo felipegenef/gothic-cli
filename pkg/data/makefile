@@ -23,10 +23,6 @@ css:
 	./{{.TailWindFileName}} -i src/css/app.css -o public/styles.css  --minify
 
 # Generate CSS based on classes located on templ files in watch mode
-hot-reload-css:
-	./{{.TailWindFileName}} -i src/css/app.css -o public/styles.css  --minify --watch 
-
-# Generate CSS based on classes located on templ files in watch mode
 optimize-images:
 	gothic-cli optimize-images
 

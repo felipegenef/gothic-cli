@@ -75,6 +75,11 @@ func (command *InitCommand) CreateNewGothicApp(data cli_data.GothicCliData) erro
 	if err := command.cli.Templ.Render(); err != nil {
 		return err
 	}
+
+	if err := command.cli.FileBasedRouter.Render(gomodName); err != nil {
+		return err
+	}
+
 	gitinit := exec.Command("git", "init")
 	gitinit.Run()
 	fmt.Println("Project initialized successfully!")

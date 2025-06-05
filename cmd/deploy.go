@@ -77,6 +77,10 @@ func (command *DeployCommand) Deploy(stage string, action string) error {
 		return err
 	}
 
+	if err := command.cli.FileBasedRouter.Render(command.cli.GetConfig().GoModName); err != nil {
+		return err
+	}
+
 	if err := command.cli.Tailwind.Build(); err != nil {
 		return err
 	}

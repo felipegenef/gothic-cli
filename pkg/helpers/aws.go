@@ -15,7 +15,7 @@ func NewAwsHelper() AwsHelper {
 	return AwsHelper{}
 }
 
-func (a *AwsHelper) AddCloudFrontAssets(originBucketName string, region string, awsProfile string) error {
+func (helper *AwsHelper) AddCloudFrontAssets(originBucketName string, region string, awsProfile string) error {
 
 	// Construct the S3 bucket name
 	bucketPublicFolderName := "s3://" + originBucketName + "/public"
@@ -38,7 +38,7 @@ func (a *AwsHelper) AddCloudFrontAssets(originBucketName string, region string, 
 
 }
 
-func (a *AwsHelper) RemoveCloudFrontAssets(originBucketName string, region string, awsProfile string) error {
+func (helper *AwsHelper) RemoveCloudFrontAssets(originBucketName string, region string, awsProfile string) error {
 
 	// Construct the S3 bucket name
 	bucketPublicFolderName := "s3://" + originBucketName + "/public"
@@ -59,7 +59,7 @@ func (a *AwsHelper) RemoveCloudFrontAssets(originBucketName string, region strin
 	return nil
 }
 
-func (a *AwsHelper) CleanCloudFrontCache(stackName string, stage string, region string, awsProfile string) error {
+func (helper *AwsHelper) CleanCloudFrontCache(stackName string, stage string, region string, awsProfile string) error {
 
 	// Execute the command to get the CloudFront distribution ID
 	getDistributionIdCMD := exec.Command("aws", "cloudformation", "describe-stacks", "--stack-name", stackName+"-"+stage, "--query", "Stacks[0].Outputs[?OutputKey=='CloudFrontId'].OutputValue", "--output", "text", "--region", region, "--profile", awsProfile)

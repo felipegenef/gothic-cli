@@ -32,7 +32,15 @@ func newBuildCommandCli(cli *gothic_cli.GothicCli) BuildCommand {
 }
 
 func (command *BuildCommand) Build() error {
-	return command.cli.Templ.Render()
+	if err := command.cli.Templ.Render(); err != nil {
+		return err
+	}
+
+	if err := command.cli.FileBasedRouter.Render(command.cli.GetConfig().GoModName); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func newBuildCommand(cli gothic_cli.GothicCli) RunEFunc {

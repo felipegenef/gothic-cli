@@ -94,8 +94,11 @@ var DefaultCLIData = GothicCliData{
 		".gothicCli/templates/template-custom-domain-with-arn.yaml": templatesFolder,
 		".gothicCli/templates/template-custom-domain.yaml":          templatesFolder,
 		".gothicCli/templates/template-default.yaml":                templatesFolder,
+		".gothicCli/templates/autoGenRoutes.go":                     templatesFolder,
 	},
 	InitialFiles: map[string]embed.FS{
+		// route files
+		"src/routes/autoGenRoutes.go": srcFolder,
 		// util files
 		"src/utils/handler.go": srcFolder,
 		// page files
@@ -134,6 +137,7 @@ var DefaultCLIData = GothicCliData{
 		"src/layouts",
 		"src/pages",
 		"src/utils",
+		"src/routes",
 	},
 	GitIgnore: gitIgnore,
 	EnvSample: envs,
@@ -155,8 +159,9 @@ var DefaultCLIData = GothicCliData{
 		"src/pages/index.templ":      "Index",
 	},
 	CustomTemplateBasedComponents: map[string]string{
-		"src/components/helloWorld.templ": "HelloWorld",
-		"src/components/lazyLoad.templ":   "LazyLoad",
+		"src/components/helloWorld.templ":     "HelloWorld",
+		"src/components/lazyLoad.templ":       "LazyLoad",
+		"src/components/optimizedImage.templ": "OptimizedImage",
 	},
 	CustomTemplateBasedRoutes: map[string]string{
 		"src/api/helloWorld.go": "HelloWorld",

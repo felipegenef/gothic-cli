@@ -1,5 +1,21 @@
 package components
 
+import (
+	  routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+	  "net/http"
+)
+
+
+type {{.ComponentName}}Props = bool
+
+var {{.ComponentName}}Config = routes.RouteConfig[{{.ComponentName}}Props]{
+	Type: routes.STATIC,
+	HttpMethod: routes.GET,
+	Middleware: func(w http.ResponseWriter, r *http.Request) {{.ComponentName}}Props {
+		return false
+	},
+}
+
 /**
 	*                           Image Optimization
 	*
@@ -7,8 +23,7 @@ package components
     *
 	*
 */
-
-templ {{.ComponentName}}(isFirstLoad bool) {
+templ {{.ComponentName}}(isFirstLoad LazyLoadProps) {
 	if isFirstLoad {
 		<div hx-get="/yourLazyLoadedComponent" hx-trigger="load">
 			<div>Put here your scheleton or first load component for the /yourComponent route</div>

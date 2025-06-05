@@ -3,9 +3,21 @@ package pages
 import (
 	"{{.GoModName}}/src/layouts"
 	"time"
+	routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+    "net/http"
 )
 
-templ {{.PageName}}(currentTime time.Time) {
+type {{.PageName}}Props = time.Time
+
+var {{.PageName}}Config = routes.RouteConfig[{{.PageName}}Props]{
+	Type: routes.ISR,
+	HttpMethod: routes.GET,
+	Middleware: func(w http.ResponseWriter, r *http.Request) {{.PageName}}Props {
+		return time.Now()
+	},
+}
+
+templ {{.PageName}}(currentTime {{.PageName}}Props) {
 	@layouts.PageLayout() {
 		<div class="flex flex-col justify-center items-center w-screen h-screen">
 			<h1 class="text-4xl mb-5 text-white">ISR Feature with GOTH APP</h1>

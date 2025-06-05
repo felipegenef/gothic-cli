@@ -1,5 +1,32 @@
 package components
 
+
+import (
+	routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+    "net/http"
+)
+
+type {{.ComponentName}}Props = struct{
+ IsFirstLoad bool
+ ImgName string
+ ImgExtension string
+ Alt string
+}
+
+var {{.ComponentName}}Config = routes.RouteConfig[{{.ComponentName}}Props]{
+	Type: routes.STATIC,
+	HttpMethod: routes.GET,
+	Middleware: func(w http.ResponseWriter, r *http.Request) {{.ComponentName}}Props {
+		return {{.ComponentName}}Props{
+			IsFirstLoad: true,
+			ImgName: "",
+			ImgExtension: "",
+			Alt: "",
+		}
+	},
+}
+
+
 /**
 	*                           Image Optimization
 	*
@@ -16,10 +43,10 @@ package components
 	*
 */
 
-templ OptimizedImage(isFirstLoad bool, imgName string, imgExtension string, alt string) {
-	if isFirstLoad {
-		<img alt={ alt } class={ "w-full h-full" } hx-trigger="load" hx-swap="outerHTML" hx-get={ "/optimizedImage/" + imgName + "/" + imgExtension + "/" + alt } src={ "/public/" + imgName + "/blurred." + imgExtension }/>
+templ {{.ComponentName}}(componentProps {{.ComponentName}}Props) {
+	if componentProps.IsFirstLoad {
+		<img alt={ componentProps.Alt } class={ "w-full h-full" } hx-trigger="load" hx-swap="outerHTML" hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "/" + componentProps.Alt } src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }/>
 	} else {
-		<img alt={ alt } class={ "w-full h-full" } src={ "/public/" + imgName + "/original." + imgExtension }/>
+		<img alt={ componentProps.Alt } class={ "w-full h-full" } src={ "/public/" + componentProps.ImgName + "/original." + componentProps.ImgExtension }/>
 	}
 }

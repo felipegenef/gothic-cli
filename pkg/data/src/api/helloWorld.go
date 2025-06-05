@@ -3,10 +3,16 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	 routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+	"net/http"
 )
 
 type {{.RouteName}}Response struct {
 	Message string `json:"message"`
+}
+
+var {{.RouteName}}Config = routes.ApiRouteConfig{
+	HttpMethod: routes.GET,
 }
 
 func {{.RouteName}}(w http.ResponseWriter, r *http.Request) {

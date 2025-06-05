@@ -24,7 +24,7 @@ func (t *TemplHelper) Render() error {
 	return nil
 }
 
-func (t *TemplHelper) Watch() error {
+func (helper *TemplHelper) Watch() error {
 	go func() {
 		logger := NewLogger("error", false, os.Stdout)
 

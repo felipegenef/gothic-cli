@@ -62,7 +62,7 @@ func NewTemplateHelper() TemplateHelper {
 	return TemplateHelper{}
 }
 
-func (t *TemplateHelper) UpdateFromTemplate(templateFilePath string, outputFilePath string, templateStruct interface{}) error {
+func (helper *TemplateHelper) UpdateFromTemplate(templateFilePath string, outputFilePath string, templateStruct interface{}) error {
 	templateFileData, err := os.ReadFile(templateFilePath)
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func (t *TemplateHelper) UpdateFromTemplate(templateFilePath string, outputFileP
 	return nil
 }
 
-func (t *TemplateHelper) CreateFromTemplate(fileTemplate embed.FS, templateFilePath string, outputFilePath string, templateStruct interface{}) error {
+func (helper *TemplateHelper) CreateFromTemplate(fileTemplate embed.FS, templateFilePath string, outputFilePath string, templateStruct interface{}) error {
 	templateBytes, err := fs.ReadFile(fileTemplate, templateFilePath)
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func (t *TemplateHelper) CreateFromTemplate(fileTemplate embed.FS, templateFileP
 	return nil
 }
 
-func (t *TemplateHelper) CopyFile(filePath string, destinationPath string) error {
+func (helper *TemplateHelper) CopyFile(filePath string, destinationPath string) error {
 	fileContent, err := os.ReadFile(filePath)
 
 	if err != nil {
@@ -114,7 +114,7 @@ func (t *TemplateHelper) CopyFile(filePath string, destinationPath string) error
 	return os.WriteFile(destinationPath, fileContent, 0644)
 }
 
-func (t *TemplateHelper) CopyFromFs(fileTemplate embed.FS, templateFilePath string, outputFilePath string) error {
+func (helper *TemplateHelper) CopyFromFs(fileTemplate embed.FS, templateFilePath string, outputFilePath string) error {
 	templateBytes, err := fs.ReadFile(fileTemplate, templateFilePath)
 	if err != nil {
 		return err

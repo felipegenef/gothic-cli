@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	helpers "github.com/felipegenef/gothic-cli/pkg/helpers"
+	routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
 )
 
 type GothicCli struct {
@@ -17,12 +18,13 @@ type GothicCli struct {
 	appID   *string
 	Runtime string
 
-	Templates helpers.TemplateHelper
-	Tailwind  helpers.TailwindHelper
-	Templ     helpers.TemplHelper
-	Logger    *slog.Logger
-	AwsSam    helpers.AwsSamHelper
-	AWS       helpers.AwsHelper
+	Templates       helpers.TemplateHelper
+	Tailwind        helpers.TailwindHelper
+	Templ           helpers.TemplHelper
+	Logger          *slog.Logger
+	AwsSam          helpers.AwsSamHelper
+	AWS             helpers.AwsHelper
+	FileBasedRouter routes.FileBasedRouteHelper
 }
 
 type CliCommands struct {
@@ -39,13 +41,14 @@ type CliCommands struct {
 func NewCli() GothicCli {
 	cli := GothicCli{
 
-		Runtime:   runtime.GOOS,
-		Templates: helpers.NewTemplateHelper(),
-		Tailwind:  helpers.NewTailwindHelper(),
-		Templ:     helpers.NewTemplHelper(),
-		AwsSam:    helpers.NewAwsSamHelper(),
-		AWS:       helpers.NewAwsHelper(),
-		Logger:    helpers.NewLogger("error", false, os.Stdout),
+		Runtime:         runtime.GOOS,
+		Templates:       helpers.NewTemplateHelper(),
+		Tailwind:        helpers.NewTailwindHelper(),
+		Templ:           helpers.NewTemplHelper(),
+		AwsSam:          helpers.NewAwsSamHelper(),
+		AWS:             helpers.NewAwsHelper(),
+		Logger:          helpers.NewLogger("error", false, os.Stdout),
+		FileBasedRouter: routes.NewFileBasedRouteHelper(),
 	}
 
 	return cli

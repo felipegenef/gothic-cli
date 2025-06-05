@@ -1,5 +1,20 @@
 package components
 
-templ {{.ComponentName}}() {
+import (
+  routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+  "net/http"
+)
+
+type {{.ComponentName}}Props = any
+
+var {{.ComponentName}}Config = routes.RouteConfig[{{.ComponentName}}Props]{
+	Type: routes.STATIC,
+	HttpMethod: routes.GET,
+	Middleware: func(w http.ResponseWriter, r *http.Request) {{.ComponentName}}Props {
+		return nil
+	},
+}
+
+templ {{.ComponentName}}(props {{.ComponentName}}Props) {
 	<span class="font-semibold text-white text-3xl sm:text-4xl md:text-4xl max-w-xl text-center">Hey You!</span>
 }

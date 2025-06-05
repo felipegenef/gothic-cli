@@ -14,7 +14,7 @@ func NewAwsSamHelper() AwsSamHelper {
 	return AwsSamHelper{}
 }
 
-func (t *AwsSamHelper) Build() error {
+func (helper *AwsSamHelper) Build() error {
 	samBuildCMD := exec.Command("sam", "build")
 	samBuildCMD.Stdout = os.Stdout
 	samBuildCMD.Stdin = os.Stdin
@@ -28,7 +28,7 @@ func (t *AwsSamHelper) Build() error {
 	return err
 }
 
-func (t *AwsSamHelper) Deploy(stage string, stackName string, awsProfile string) error {
+func (helper *AwsSamHelper) Deploy(stage string, stackName string, awsProfile string) error {
 	samDeployCMD := exec.Command("sam", "deploy", "--stack-name", stackName+"-"+stage, "--parameter-overrides", "Stage="+stage, "--profile", awsProfile)
 	samDeployCMD.Stdout = os.Stdout
 	samDeployCMD.Stdin = os.Stdin
@@ -42,7 +42,7 @@ func (t *AwsSamHelper) Deploy(stage string, stackName string, awsProfile string)
 	return nil
 }
 
-func (t *AwsSamHelper) DeleteStack(stage string, stackName string, awsProfile string) error {
+func (helper *AwsSamHelper) DeleteStack(stage string, stackName string, awsProfile string) error {
 
 	samDeleteCMD := exec.Command("sam", "delete", "--stack-name", stackName+"-"+stage, "--profile", awsProfile)
 	samDeleteCMD.Stdout = os.Stdout
