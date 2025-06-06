@@ -37,7 +37,7 @@ var tailwindCSSWindows embed.FS
 //go:embed tailwindcss-mac
 var tailwindCSSMac embed.FS
 
-var envs string = `HTTP_LISTEN_ADDR: ":8080"
+var env string = `HTTP_LISTEN_ADDR: ":8080"
 LOCAL_SERVE: "true"`
 
 var gitIgnore string = `.env
@@ -69,7 +69,6 @@ type GothicCliData struct {
 	CustomTemplateBasedComponents map[string]string
 	CustomTemplateBasedRoutes     map[string]string
 	GitIgnore                     string
-	EnvSample                     string
 	Env                           string
 	Tailwind                      TailWindCSS
 	GoticConfig                   embed.FS
@@ -99,8 +98,6 @@ var DefaultCLIData = GothicCliData{
 	InitialFiles: map[string]embed.FS{
 		// route files
 		"src/routes/autoGenRoutes.go": srcFolder,
-		// util files
-		"src/utils/handler.go": srcFolder,
 		// page files
 		"src/pages/index.templ":      srcFolder,
 		"src/pages/revalidate.templ": srcFolder,
@@ -109,9 +106,9 @@ var DefaultCLIData = GothicCliData{
 		// css files
 		"src/css/app.css": srcFolder,
 		// component files
-		"src/components/helloWorld.templ":     srcFolder,
-		"src/components/optimizedImage.templ": srcFolder,
-		"src/components/lazyLoad.templ":       srcFolder,
+		"src/components/helloWorld.templ":                            srcFolder,
+		"src/components/optimizedImage/var_name/var_extension.templ": srcFolder,
+		"src/components/lazyLoad.templ":                              srcFolder,
 		// api files
 		"src/api/helloWorld.go": srcFolder,
 		// root files
@@ -133,15 +130,15 @@ var DefaultCLIData = GothicCliData{
 		// Src Dirs
 		"src/api",
 		"src/components",
+		"src/components/optimizedImage",
+		"src/components/optimizedImage/var_name",
 		"src/css",
 		"src/layouts",
 		"src/pages",
-		"src/utils",
 		"src/routes",
 	},
 	GitIgnore: gitIgnore,
-	EnvSample: envs,
-	Env:       envs,
+	Env:       env,
 	Tailwind: TailWindCSS{
 		Mac:     tailwindCSSMac,
 		Windows: tailwindCSSWindows,
@@ -159,9 +156,9 @@ var DefaultCLIData = GothicCliData{
 		"src/pages/index.templ":      "Index",
 	},
 	CustomTemplateBasedComponents: map[string]string{
-		"src/components/helloWorld.templ":     "HelloWorld",
-		"src/components/lazyLoad.templ":       "LazyLoad",
-		"src/components/optimizedImage.templ": "OptimizedImage",
+		"src/components/helloWorld.templ":                            "HelloWorld",
+		"src/components/lazyLoad.templ":                              "LazyLoad",
+		"src/components/optimizedImage/var_name/var_extension.templ": "OptimizedImage",
 	},
 	CustomTemplateBasedRoutes: map[string]string{
 		"src/api/helloWorld.go": "HelloWorld",

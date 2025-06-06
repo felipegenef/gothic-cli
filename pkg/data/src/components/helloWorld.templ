@@ -5,16 +5,16 @@ import (
   "net/http"
 )
 
-type {{.ComponentName}}Props = any
+type HelloWorldProps = interface {}
 
-var {{.ComponentName}}Config = routes.RouteConfig[{{.ComponentName}}Props]{
+var HelloWorldConfig = routes.RouteConfig[HelloWorldProps]{
 	Type: routes.STATIC,
 	HttpMethod: routes.GET,
-	Middleware: func(w http.ResponseWriter, r *http.Request) {{.ComponentName}}Props {
+	Middleware: func(w http.ResponseWriter, r *http.Request) HelloWorldProps {
 		return nil
 	},
 }
 
-templ {{.ComponentName}}(props {{.ComponentName}}Props) {
+templ HelloWorld(props HelloWorldProps) {
 	<span class="font-semibold text-white text-3xl sm:text-4xl md:text-4xl max-w-xl text-center">Hey You!</span>
 }

@@ -8,6 +8,7 @@ import (
 
 	"{{.GoModName}}/src/routes"
 
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 )
@@ -17,6 +18,7 @@ func {{.MainServerFunctionName}} {
 	var localServe = os.Getenv("LOCAL_SERVE")
 	var isLocal = len(localServe) > 0 && localServe == "true"
 	router := chi.NewMux()
+	router.Use(middleware.Logger)
 
 	/**
 	*                              Public assets folder

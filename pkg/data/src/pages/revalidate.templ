@@ -5,19 +5,62 @@ import (
 	"time"
 	routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
     "net/http"
+    "os"
 )
 
-type {{.PageName}}Props = time.Time
+/**
+ * `RevalidateProps` defines the data (props) that this page receives from the middleware.
+ * In this case, we’re passing a `time.Time` value that will be displayed in the page.
+ */
+type RevalidateProps = time.Time
 
-var {{.PageName}}Config = routes.RouteConfig[{{.PageName}}Props]{
-	Type: routes.ISR,
-	HttpMethod: routes.GET,
-	Middleware: func(w http.ResponseWriter, r *http.Request) {{.PageName}}Props {
-		return time.Now()
+// Keeps track of the last time the page was revalidated locally (used for local development).
+var revalidateLocalTime = time.Now()
+
+/**
+ * `RevalidateConfig` defines the configuration for this ISR-enabled route.
+ *
+ * - `Type`: Set to `ISR` (Incremental Static Regeneration), allowing the page to be statically generated and then revalidated in the background every `RevalidateInSec` seconds.
+ * - `HttpMethod`: Sets the HTTP method this page responds to (in this case, GET).
+ * - `Middleware`: Runs server-side to generate the props (`RevalidateProps`) for the page.
+ *   - If running locally (`LOCAL_SERVE=true`), it simulates ISR with a simple time check.
+ *   - In production, sets cache-control headers to enable proper CloudFront caching behavior.
+ * - `RevalidateInSec`: Specifies the revalidation interval in seconds (every 10 seconds).
+ */
+var RevalidateConfig = routes.RouteConfig[RevalidateProps]{
+	Type:          routes.ISR,
+	HttpMethod:    routes.GET,
+	Middleware: func(w http.ResponseWriter, r *http.Request) RevalidateProps {
+		currentTime := time.Now()
+		localServe := os.Getenv("LOCAL_SERVE")
+		isLocal := len(localServe) > 0 && localServe == "true"
+
+		/**
+		 * In local mode, simulate ISR manually using a timestamp.
+		 * This allows you to test regeneration behavior even when not running in a serverless environment.
+		 *
+		 * ⚠️ You can remove the local block if local ISR isn't needed — production behavior doesn't rely on it.
+		 */
+		if isLocal {
+			// Revalidate if more than 10 seconds have passed since last regeneration
+			if currentTime.Sub(revalidateLocalTime) > 10*time.Second {
+				revalidateLocalTime = currentTime
+			}
+			return revalidateLocalTime
+		}
+		
+		return currentTime
+		
 	},
+	RevalidateInSec: 10, // Revalidate this page every 10 seconds
 }
 
-templ {{.PageName}}(currentTime {{.PageName}}Props) {
+/**
+ * `Revalidate` is the actual page component, rendered with the props returned by the middleware.
+ *
+ * The current server time is displayed in RFC3339 format, showcasing that the page updates at intervals.
+ */
+templ Revalidate(currentTime RevalidateProps) {
 	@layouts.PageLayout() {
 		<div class="flex flex-col justify-center items-center w-screen h-screen">
 			<h1 class="text-4xl mb-5 text-white">ISR Feature with GOTH APP</h1>

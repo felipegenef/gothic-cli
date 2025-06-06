@@ -39,7 +39,7 @@ type RouteConfig[T any] struct {
 }
 
 var DefaultConfig = RouteConfig[any]{
-	Type:       DYNAMIC,
+	Type:       STATIC,
 	HttpMethod: GET,
 	Middleware: func(w http.ResponseWriter, r *http.Request) any {
 		return nil

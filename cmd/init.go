@@ -181,7 +181,6 @@ func (command *InitCommand) createHiddenFiles() error {
 
 	go func() {
 		os.WriteFile(".env", []byte(command.gothicCliData.Env), 0644)
-		os.WriteFile(".env.sample", []byte(command.gothicCliData.EnvSample), 0644)
 		wg.Done()
 	}()
 
