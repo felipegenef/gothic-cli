@@ -1,0 +1,88 @@
+package imageComponents
+
+
+import (
+	routes "{{.GoModName}}/routes"
+    "net/http"
+	"github.com/go-chi/chi/v5"
+)
+
+/**
+ * `OptimizedImageProps` defines the input props for the OptimizedImage component.
+ *
+ * Fields:
+ * - `IsFirstLoad`: Indicates whether this is the initial blurred image request.
+ *     - This should only be set to `true` when rendered from another component or page (like `Index`).
+ *     - When HTMX triggers the `load` event to swap in the full image, `IsFirstLoad` is automatically `false`.
+ *     - For a usage example, refer to the `Index` page implementation.
+ * - `ImgName`: The base name of the image file (e.g., "logo").
+ * - `ImgExtension`: The file extension (e.g., "jpeg", "png").
+ * - `Alt`: The image's alt text — important for accessibility and SEO.
+ */
+type OptimizedImageProps = struct {
+	IsFirstLoad   bool
+	ImgName       string
+	ImgExtension  string
+	Alt           string
+}
+
+/**
+ * `OptimizedImageConfig` sets up a route for serving optimized images with lazy loading.
+ *
+ * - `Type`: Set to `STATIC` so images are cached by CloudFront and served instantly from edge locations.
+ * - `HttpMethod`: Uses `GET`, which works seamlessly with HTMX for background fetching.
+ * - `Middleware`: Extracts route parameters (`:name`, `:extension`) and query parameters (`alt`) to
+ *   generate the image rendering props. `IsFirstLoad` is always `false` here because only the initial
+ *   blurred image (rendered from the parent page/component) sets it to `true`.
+ */
+var OptimizedImageConfig = routes.RouteConfig[OptimizedImageProps]{
+	Type:       routes.STATIC,
+	HttpMethod: routes.GET,
+	Middleware: func(w http.ResponseWriter, r *http.Request) OptimizedImageProps {
+		imgName := chi.URLParam(r, "name")
+		imgExtension := chi.URLParam(r, "extension")
+		imgAlt := r.URL.Query().Get("alt")
+		return OptimizedImageProps{
+			IsFirstLoad:  false, // always false in HTMX-triggered follow-up calls
+			ImgName:      imgName,
+			ImgExtension: imgExtension,
+			Alt:          imgAlt,
+		}
+	},
+}
+
+/**
+ *                            📸 OptimizedImage Component
+ *
+ * This component implements lazy loading with a smooth transition from a low-res placeholder
+ * to the full-resolution image — improving perceived performance and SEO.
+ *
+ * How it works:
+ * - When `IsFirstLoad` is `true` (from initial page render, e.g., in `Index`):
+ *   - A blurred image is shown using a smaller version.
+ *   - `hx-get` fetches the full-res version in the background.
+ *   - On load, the image is swapped in place using HTMX.
+ *
+ * - When `IsFirstLoad` is `false` (in HTMX request):
+ *   - The full-resolution image is rendered immediately.
+ *
+ * Tip: To see this in action, check how the `Index` page uses `OptimizedImage`.
+ */
+templ OptimizedImage(componentProps OptimizedImageProps) {
+	if componentProps.IsFirstLoad {
+		<img 
+			alt={ componentProps.Alt }
+			class="w-full h-full"
+			hx-trigger="load"
+			hx-swap="outerHTML"
+			hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
+			src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }
+		/>
+	} else {
+		<img 
+			alt={ componentProps.Alt }
+			class="w-full h-full"
+			src={ "/public/" + componentProps.ImgName + "/original." + componentProps.ImgExtension }
+		/>
+	}
+}

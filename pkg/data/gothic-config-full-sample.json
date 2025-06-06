@@ -1,0 +1,34 @@
+{
+  "projectName": "gothic-example",
+  "goModuleName": "goModuleNameStringReplacer",
+  "optimizeImages": {
+    "lowResolutionRate": 20
+  },
+  "deploy": {
+    "serverMemory": 128,
+    "serverTimeout": 30,
+    "region": "us-east-1",
+    "customDomain": false,
+    "profile": "default",
+    "stages": {
+      "dev": {
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {}
+      },
+      "staging": {
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {}
+      },
+      "prod": {
+        "hostedZoneId": null,
+        "customDomain": null,
+        "certificateArn": null,
+        "env": {}
+      }
+    }
+  }
+}

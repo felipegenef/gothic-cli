@@ -1,0 +1,20 @@
+package components
+
+import (
+  routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+  "net/http"
+)
+
+type HelloWorldProps = interface {}
+
+var HelloWorldConfig = routes.RouteConfig[HelloWorldProps]{
+	Type: routes.STATIC,
+	HttpMethod: routes.GET,
+	Middleware: func(w http.ResponseWriter, r *http.Request) HelloWorldProps {
+		return nil
+	},
+}
+
+templ HelloWorld(props HelloWorldProps) {
+	<span class="font-semibold text-white text-3xl sm:text-4xl md:text-4xl max-w-xl text-center">Hey You!</span>
+}
