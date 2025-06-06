@@ -8,7 +8,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/a-h/templ"
 	helpers "github.com/felipegenef/gothic-cli/pkg/helpers"
+	"github.com/go-chi/chi/v5"
 )
 
 type RouteConfig[T any] struct {
@@ -18,8 +20,137 @@ type RouteConfig[T any] struct {
 	Middleware      func(w http.ResponseWriter, r *http.Request) T
 }
 
+func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, component func(T) templ.Component) {
+	if config.Type == STATIC {
+		switch config.HttpMethod {
+		case GET:
+			r.Get(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", "max-age=31536000")
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case POST:
+			r.Post(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", "max-age=31536000")
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case PUT:
+			r.Put(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", "max-age=31536000")
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case PATCH:
+			r.Patch(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", "max-age=31536000")
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case DELETE:
+			r.Delete(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", "max-age=31536000")
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		}
+
+	}
+
+	if config.Type == DYNAMIC {
+		switch config.HttpMethod {
+		case GET:
+			r.Get(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case POST:
+			r.Post(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case PUT:
+			r.Put(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case PATCH:
+			r.Patch(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case DELETE:
+			r.Delete(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		}
+
+	}
+
+	if config.Type == ISR {
+		switch config.HttpMethod {
+		case GET:
+			r.Get(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", fmt.Sprintf(
+					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+				))
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case POST:
+			r.Post(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", fmt.Sprintf(
+					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+				))
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case PUT:
+			r.Put(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", fmt.Sprintf(
+					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+				))
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case PATCH:
+			r.Patch(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", fmt.Sprintf(
+					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+				))
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		case DELETE:
+			r.Delete(httpPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", fmt.Sprintf(
+					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+				))
+				config.Render(r, w, component(config.Middleware(w, r)))
+			})
+		}
+	}
+
+}
+
+func (config *RouteConfig[T]) Render(r *http.Request, w http.ResponseWriter, component templ.Component) error {
+	return component.Render(r.Context(), w)
+}
+
 type ApiRouteConfig struct {
 	HttpMethod HttpMethod
+}
+
+func (config *ApiRouteConfig) RegisterRoute(r chi.Router, httpPath string, fn func(w http.ResponseWriter, r *http.Request)) {
+	switch config.HttpMethod {
+	case GET:
+		r.Get(httpPath, fn)
+	case POST:
+		r.Post(httpPath, fn)
+	case PUT:
+		r.Put(httpPath, fn)
+	case PATCH:
+		r.Patch(httpPath, fn)
+	case DELETE:
+		r.Delete(httpPath, fn)
+	}
+
+}
+
+func (config *ApiRouteConfig) Render(r *http.Request, w http.ResponseWriter, component templ.Component) error {
+	return component.Render(r.Context(), w)
 }
 
 type ConfigType int
@@ -101,6 +232,8 @@ func (helper *FileBasedRouteHelper) Render(goModName string) error {
 			return err
 		}
 		if strings.HasSuffix(info.Name(), "templ.go") {
+			route.ConfigName = "DefaultConfig"
+			route.ConfigPackageName = "routes"
 			content, err := os.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read file %s: %w", path, err)
@@ -132,7 +265,9 @@ func (helper *FileBasedRouteHelper) Render(goModName string) error {
 			}
 
 			route.HttpPath = helper.normalizeHttpPath(path)
-			helper.TemplateInfo.Routes = append(helper.TemplateInfo.Routes, route)
+			if route.FunctionName != "" {
+				helper.TemplateInfo.Routes = append(helper.TemplateInfo.Routes, route)
+			}
 		}
 		return nil
 	})
@@ -147,6 +282,8 @@ func (helper *FileBasedRouteHelper) Render(goModName string) error {
 			return err
 		}
 		if strings.HasSuffix(info.Name(), "templ.go") {
+			route.ConfigName = "DefaultConfig"
+			route.ConfigPackageName = "routes"
 			content, err := os.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read file %s: %w", path, err)
@@ -178,7 +315,9 @@ func (helper *FileBasedRouteHelper) Render(goModName string) error {
 			}
 
 			route.HttpPath = helper.normalizeHttpPath(path)
-			helper.TemplateInfo.Routes = append(helper.TemplateInfo.Routes, route)
+			if route.FunctionName != "" {
+				helper.TemplateInfo.Routes = append(helper.TemplateInfo.Routes, route)
+			}
 		}
 		return nil
 	})
@@ -193,6 +332,8 @@ func (helper *FileBasedRouteHelper) Render(goModName string) error {
 			return err
 		}
 		if strings.HasSuffix(info.Name(), ".go") {
+			route.ConfigName = "DefaultApiConfig"
+			route.ConfigPackageName = "routes"
 			content, err := os.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read file %s: %w", path, err)
@@ -224,7 +365,9 @@ func (helper *FileBasedRouteHelper) Render(goModName string) error {
 			}
 
 			route.HttpPath = helper.normalizeHttpPath(path)
-			helper.TemplateInfo.ApiRoutes = append(helper.TemplateInfo.ApiRoutes, route)
+			if route.FunctionName != "" {
+				helper.TemplateInfo.ApiRoutes = append(helper.TemplateInfo.ApiRoutes, route)
+			}
 		}
 		return nil
 	})

@@ -35,10 +35,7 @@ func {{.MainServerFunctionName}} {
 		router.Handle("/public/*", http.StripPrefix("/public/", http.FileServer(http.Dir("./public/"))))
 	}
 
-	router.Group(routes.FileBasedRoutes.StaticRoutes)
-	router.Group(routes.FileBasedRoutes.DynamicRoutes)
-	router.Group(routes.FileBasedRoutes.IsrRoutes)
-	router.Group(routes.FileBasedRoutes.ApiRoutes)
+	router.Group(routes.RegisterFileBasedRoutes)
 
 	port := os.Getenv("HTTP_LISTEN_ADDR")
 	slog.Info("application running", "port", port)
