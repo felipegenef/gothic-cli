@@ -113,6 +113,10 @@ func (helper *TemplateHelper) CopyFile(filePath string, destinationPath string) 
 
 	return os.WriteFile(destinationPath, fileContent, 0644)
 }
+func (helper *TemplateHelper) DeleteFile(filePath string) error {
+	return os.Remove(filePath)
+
+}
 
 func (helper *TemplateHelper) CopyFromFs(fileTemplate embed.FS, templateFilePath string, outputFilePath string) error {
 	templateBytes, err := fs.ReadFile(fileTemplate, templateFilePath)

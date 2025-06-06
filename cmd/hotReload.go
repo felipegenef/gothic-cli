@@ -128,10 +128,8 @@ func (command *HotReloadCommand) watchForChanges() {
 	})
 	if err != nil {
 		fmt.Printf("error walking through directories: %v", err)
+		command.rebuild()
 	}
-
-	debounce := time.NewTimer(0)
-	<-debounce.C
 
 	for {
 		select {
@@ -139,12 +137,23 @@ func (command *HotReloadCommand) watchForChanges() {
 			if !ok {
 				return
 			}
-			if command.shouldHandle(event.Name) {
-				debounce.Reset(500 * time.Millisecond)
+			if command.shouldHandle(event.Name, event.Op) {
+				command.rebuild()
 			}
-		case <-debounce.C:
-			go command.rebuild()
+			// Dynamically watch new directories
+			if event.Op&fsnotify.Create == fsnotify.Create {
+				info, err := os.Stat(event.Name)
+				if err == nil && info.IsDir() && !command.isExcludedDir(event.Name) {
+					err := watcher.Add(event.Name)
+					if err == nil {
+						log.Printf("New directory added to watcher: %s", event.Name)
+					} else {
+						log.Printf("Failed to add new directory to watcher: %s, error: %v", event.Name, err)
+					}
+				}
+			}
 		case err, ok := <-watcher.Errors:
+			command.rebuild()
 			if !ok {
 				fmt.Printf("error reloading app: %v", err)
 			}
@@ -153,13 +162,19 @@ func (command *HotReloadCommand) watchForChanges() {
 	}
 }
 
-func (command *HotReloadCommand) shouldHandle(path string) bool {
+func (command *HotReloadCommand) shouldHandle(path string, op fsnotify.Op) bool {
 	if command.isExcludedDir(path) {
 		return false
 	}
-	if command.excludeRegex.MatchString(filepath.Base(path)) {
-		return false
+
+	filename := filepath.Base(path)
+	if command.excludeRegex.MatchString(filename) {
+		// Ignore templ-generated files unless they are deleted
+		if op&(fsnotify.Remove) == 0 {
+			return false
+		}
 	}
+
 	ext := filepath.Ext(path)
 	for _, e := range command.watchedExtensions {
 		if e == ext {
@@ -207,18 +222,11 @@ func (command *HotReloadCommand) watchTemplChanges() {
 func (command *HotReloadCommand) rebuild() {
 	command.mutex.Lock()
 	defer command.mutex.Unlock()
-	if command.runCancel != nil {
-		log.Println("Stopping previous go run process...")
-		command.runCancel()
-		command.runCancel = nil
-	}
-	log.Println("Rebuild Templ...")
-	if err := command.cli.Templ.Render(); err != nil {
-		fmt.Printf("error generating templ files: %v", err)
-	}
+
 	log.Println("Build routes...")
 	if err := command.cli.FileBasedRouter.Render(command.cli.GetConfig().GoModName); err != nil {
 		fmt.Printf("error building routes: %v", err)
+		return
 	}
 
 	log.Println("Build app...")
@@ -227,8 +235,14 @@ func (command *HotReloadCommand) rebuild() {
 	buildCmd.Stderr = os.Stderr
 	if err := buildCmd.Run(); err != nil {
 		fmt.Printf("error building app: %v", err)
+		return
 	}
 
+	if command.runCancel != nil {
+		log.Println("Stopping previous go run process...")
+		command.runCancel()
+		command.runCancel = nil
+	}
 	log.Println("Running app...")
 	ctx, cancel := context.WithCancel(context.Background())
 	command.runCancel = cancel
