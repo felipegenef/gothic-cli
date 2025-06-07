@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/a-h/templ"
@@ -467,6 +468,11 @@ func (helper *FileBasedRouteHelper) pruneMissingFiles() {
 }
 
 func (helper *FileBasedRouteHelper) normalizeHttpPath(path string) string {
+	// Normalize Windows path separators to Unix-style
+	if runtime.GOOS == "windows" {
+		path = strings.ReplaceAll(path, `\`, `/`)
+	}
+
 	// Remove extensions
 	path = strings.TrimSuffix(path, "_templ.go")
 	path = strings.TrimSuffix(path, ".go")
