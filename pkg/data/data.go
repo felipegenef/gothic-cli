@@ -86,6 +86,7 @@ var DefaultCLIData = GothicCliData{
 		"public/imageExample/blurred.jpeg":  publicFolder,
 		"public/imageExample/original.jpeg": publicFolder,
 		"public/favicon.ico":                publicFolder,
+		"public/styles.css":                 publicFolder,
 	},
 	TemplateFiles: map[string]embed.FS{
 		".gothicCli/templates/Dockerfile-template":                  templatesFolder,

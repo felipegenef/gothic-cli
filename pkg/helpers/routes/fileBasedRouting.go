@@ -482,7 +482,6 @@ func (helper *FileBasedRouteHelper) normalizeHttpPath(path string) string {
 
 	// Remove base prefixes
 	path = strings.TrimPrefix(path, "src/pages")
-	path = strings.TrimPrefix(path, "src/components")
 	path = strings.TrimPrefix(path, "src")
 
 	// Normalize /index
