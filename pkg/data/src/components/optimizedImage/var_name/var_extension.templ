@@ -75,7 +75,7 @@ templ OptimizedImage(componentProps OptimizedImageProps) {
 			class="w-full h-full"
 			hx-trigger="load"
 			hx-swap="outerHTML"
-			hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
+			hx-get={ "/components/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
 			src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }
 		/>
 	} else {
