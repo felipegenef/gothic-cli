@@ -17,8 +17,8 @@ import (
 	"time"
 
 	templGenerate "github.com/a-h/templ/cmd/templ/generatecmd"
-	gothic_cli "github.com/felipegenef/gothic-cli/pkg/cli"
-	gothic_helpers "github.com/felipegenef/gothic-cli/pkg/helpers"
+	gothic_cli "github.com/felipegenef/gothicframework/pkg/cli"
+	gothic_helpers "github.com/felipegenef/gothicframework/pkg/helpers"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )

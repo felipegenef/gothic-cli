@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	gothic_cli "github.com/felipegenef/gothic-cli/pkg/cli"
-	"github.com/felipegenef/gothic-cli/pkg/helpers"
+	gothic_cli "github.com/felipegenef/gothicframework/pkg/cli"
+	"github.com/felipegenef/gothicframework/pkg/helpers"
 
 	"github.com/spf13/cobra"
 )

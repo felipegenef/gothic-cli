@@ -107,9 +107,8 @@ var DefaultCLIData = GothicCliData{
 		// css files
 		"src/css/app.css": srcFolder,
 		// component files
-		"src/components/helloWorld.templ":                            srcFolder,
-		"src/components/optimizedImage/var_name/var_extension.templ": srcFolder,
-		"src/components/lazyLoad.templ":                              srcFolder,
+		"src/components/helloWorld.templ": srcFolder,
+		"src/components/lazyLoad.templ":   srcFolder,
 		// api files
 		"src/api/helloWorld.go": srcFolder,
 		// root files
@@ -131,8 +130,6 @@ var DefaultCLIData = GothicCliData{
 		// Src Dirs
 		"src/api",
 		"src/components",
-		"src/components/optimizedImage",
-		"src/components/optimizedImage/var_name",
 		"src/css",
 		"src/layouts",
 		"src/pages",
@@ -157,9 +154,8 @@ var DefaultCLIData = GothicCliData{
 		"src/pages/index.templ":      "Index",
 	},
 	CustomTemplateBasedComponents: map[string]string{
-		"src/components/helloWorld.templ":                            "HelloWorld",
-		"src/components/lazyLoad.templ":                              "LazyLoad",
-		"src/components/optimizedImage/var_name/var_extension.templ": "OptimizedImage",
+		"src/components/helloWorld.templ": "HelloWorld",
+		"src/components/lazyLoad.templ":   "LazyLoad",
 	},
 	CustomTemplateBasedRoutes: map[string]string{
 		"src/api/helloWorld.go": "HelloWorld",
