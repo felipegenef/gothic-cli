@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+	routes "github.com/felipegenef/gothicframework/pkg/helpers/routes"
 )
 
 /**

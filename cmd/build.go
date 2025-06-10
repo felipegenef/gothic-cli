@@ -4,7 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	gothic_cli "github.com/felipegenef/gothic-cli/pkg/cli"
+	gothic_cli "github.com/felipegenef/gothicframework/pkg/cli"
 	"github.com/spf13/cobra"
 )
 

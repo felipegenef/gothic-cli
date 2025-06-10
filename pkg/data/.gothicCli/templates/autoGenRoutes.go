@@ -7,7 +7,7 @@ package routes
 */
 import (
 	{{- if .ImportDefault }}
-	routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+	routes "github.com/felipegenef/gothicframework/pkg/helpers/routes"
 	{{- end }}
 	{{ range .Imports }}
 	{{.Package}} "{{.PackagePath}}"

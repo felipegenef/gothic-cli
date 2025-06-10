@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	gothic_cli "github.com/felipegenef/gothic-cli/pkg/cli"
+	gothic_cli "github.com/felipegenef/gothicframework/pkg/cli"
 	"github.com/spf13/cobra"
 
 	"github.com/nfnt/resize"

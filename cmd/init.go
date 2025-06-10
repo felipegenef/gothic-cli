@@ -12,9 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	gothci_cli "github.com/felipegenef/gothic-cli/pkg/cli"
-	cli_data "github.com/felipegenef/gothic-cli/pkg/data"
-	helpers "github.com/felipegenef/gothic-cli/pkg/helpers"
+	gothci_cli "github.com/felipegenef/gothicframework/pkg/cli"
+	cli_data "github.com/felipegenef/gothicframework/pkg/data"
+	helpers "github.com/felipegenef/gothicframework/pkg/helpers"
 	"github.com/spf13/cobra"
 	"github.com/teris-io/shortid"
 )

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"{{.GoModName}}/src/routes"
+	"github.com/felipegenef/gothicframework/components"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
@@ -38,6 +39,24 @@ func {{.MainServerFunctionName}} {
 	}
 
 	router.Group(routes.RegisterFileBasedRoutes)
+	/**
+	*                            📸 OptimizedImage Component
+	*
+	* This component implements lazy loading with a smooth transition from a low-res placeholder
+	* to the full-resolution image — improving perceived performance and SEO.
+	*
+	* How it works:
+	* - When `IsFirstLoad` is `true` (from initial page render, e.g., in `Index`):
+	*   - A blurred image is shown using a smaller version.
+	*   - `hx-get` fetches the full-res version in the background.
+	*   - On load, the image is swapped in place using HTMX.
+	*
+	* - When `IsFirstLoad` is `false` (in HTMX request):
+	*   - The full-resolution image is rendered immediately.
+	*
+	* Tip: To see this in action, check how the `Index` page uses `OptimizedImage`.
+	*/
+	gothicComponents.OptimizedImageConfig.RegisterRoute(router,"/optimizedImage/{name}/{extension}",gothicComponents.OptimizedImage)
 
 	port := os.Getenv("HTTP_LISTEN_ADDR")
 	slog.Info("application running", "port", port)

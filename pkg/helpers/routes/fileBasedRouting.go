@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	helpers "github.com/felipegenef/gothic-cli/pkg/helpers"
+	helpers "github.com/felipegenef/gothicframework/pkg/helpers"
 	"github.com/go-chi/chi/v5"
 )
 

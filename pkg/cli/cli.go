@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"runtime"
 
-	helpers "github.com/felipegenef/gothic-cli/pkg/helpers"
-	routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+	helpers "github.com/felipegenef/gothicframework/pkg/helpers"
+	routes "github.com/felipegenef/gothicframework/pkg/helpers/routes"
 )
 
 type GothicCli struct {

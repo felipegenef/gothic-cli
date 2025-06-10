@@ -1,8 +1,8 @@
-package imageComponents
+package gothicComponents
 
 
 import (
-	routes "github.com/felipegenef/gothic-cli/pkg/helpers/routes"
+	routes "github.com/felipegenef/gothicframework/pkg/helpers/routes"
     "net/http"
 	"github.com/go-chi/chi/v5"
 )
@@ -51,23 +51,6 @@ var OptimizedImageConfig = routes.RouteConfig[OptimizedImageProps]{
 	},
 }
 
-/**
- *                            📸 OptimizedImage Component
- *
- * This component implements lazy loading with a smooth transition from a low-res placeholder
- * to the full-resolution image — improving perceived performance and SEO.
- *
- * How it works:
- * - When `IsFirstLoad` is `true` (from initial page render, e.g., in `Index`):
- *   - A blurred image is shown using a smaller version.
- *   - `hx-get` fetches the full-res version in the background.
- *   - On load, the image is swapped in place using HTMX.
- *
- * - When `IsFirstLoad` is `false` (in HTMX request):
- *   - The full-resolution image is rendered immediately.
- *
- * Tip: To see this in action, check how the `Index` page uses `OptimizedImage`.
- */
 templ OptimizedImage(componentProps OptimizedImageProps) {
 	if componentProps.IsFirstLoad {
 		<img 

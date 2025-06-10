@@ -1,6 +1,5 @@
 .env
 bin
-*_templ.go*
 node_modules
 .aws-sam
 tmp
