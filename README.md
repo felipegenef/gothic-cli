@@ -1,6 +1,6 @@
 <img alt="background doc" src="Doc/Assets/background.jpeg" width="100%" height="280"/>
 
-# <img alt="logo" src="Doc/Assets/logo.jpeg" width="100" /> Gothic CLI
+# <img alt="logo" src="Doc/Assets/logo.jpeg" width="100" /> Gothic Framework
 
 > ⚠️ **Documentation Notice**  
 > The documentation has **not been updated** since the release of version **2.0.0**. This was a **major breaking change**, and we're working hard to update the docs to reflect the new framework structure and features.  
