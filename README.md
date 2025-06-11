@@ -2,10 +2,6 @@
 
 # <img alt="logo" src="Doc/Assets/logo.jpeg" width="100" /> Gothic Framework
 
-> ⚠️ **Documentation Notice**  
-> The documentation has **not been updated** since the release of version **2.0.0**. This was a **major breaking change**, and we're working hard to update the docs to reflect the new framework structure and features.  
->  
-> Please note that **version 2.0.0 is significantly more stable and reliable across all operating systems (OS)**. Thank you for your patience and support as we align the documentation with the latest improvements.
 
 ## 🚀 Build Modern Web Apps with Ease
 
