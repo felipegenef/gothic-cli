@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/a-h/templ"
@@ -50,11 +51,12 @@ var DefaultConfig = RouteConfig[any]{
 }
 
 type isrLocalCache struct {
-	data       interface{}
+	data       any
 	revalidate time.Time
 }
 
-var localCacheValue map[string]interface{}
+var localCacheMutex sync.RWMutex
+var localCacheValue map[string]any = make(map[string]any)
 
 func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, component func(T) templ.Component) {
 	godotenv.Load()
@@ -170,20 +172,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				// If cache does not exist create cache for that url and set time to revalidate
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// If cache exists and revalidate time passed recreate cache
-				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// return cached value
-				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
+				config.Render(r, w, component(config.getISRCachedOrUpdate(fullURL, w, r)))
 
 			})
 		case POST:
@@ -197,20 +186,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				// If cache does not exist create cache for that url and set time to revalidate
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// If cache exists and revalidate time passed recreate cache
-				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// return cached value
-				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
+				config.Render(r, w, component(config.getISRCachedOrUpdate(fullURL, w, r)))
 			})
 		case PUT:
 			r.Put(httpPath, func(w http.ResponseWriter, r *http.Request) {
@@ -223,20 +199,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				// If cache does not exist create cache for that url and set time to revalidate
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// If cache exists and revalidate time passed recreate cache
-				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// return cached value
-				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
+				config.Render(r, w, component(config.getISRCachedOrUpdate(fullURL, w, r)))
 			})
 		case PATCH:
 			r.Patch(httpPath, func(w http.ResponseWriter, r *http.Request) {
@@ -249,20 +212,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				// If cache does not exist create cache for that url and set time to revalidate
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// If cache exists and revalidate time passed recreate cache
-				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// return cached value
-				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
+				config.Render(r, w, component(config.getISRCachedOrUpdate(fullURL, w, r)))
 			})
 		case DELETE:
 			r.Delete(httpPath, func(w http.ResponseWriter, r *http.Request) {
@@ -275,24 +225,52 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				// If cache does not exist create cache for that url and set time to revalidate
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// If cache exists and revalidate time passed recreate cache
-				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
-					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
-					config.Render(r, w, component(localCacheValue[fullURL].(T)))
-					return
-				}
-				// return cached value
-				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
+				config.Render(r, w, component(config.getISRCachedOrUpdate(fullURL, w, r)))
 			})
 		}
 	}
 
+}
+
+func (config *RouteConfig[T]) getISRCachedOrUpdate(fullURL string, w http.ResponseWriter, r *http.Request) T {
+	localCacheMutex.Lock()
+	defer localCacheMutex.Unlock()
+	cacheItem, exists := localCacheValue[fullURL]
+	now := time.Now()
+
+	if !exists {
+		newData := config.Middleware(w, r)
+		localCacheValue[fullURL] = isrLocalCache{
+			data:       newData,
+			revalidate: now.Add(time.Duration(config.RevalidateInSec) * time.Second),
+		}
+		return newData
+	}
+
+	cached := cacheItem.(isrLocalCache)
+	if cached.revalidate.Before(now) {
+		newData := config.Middleware(w, r)
+		localCacheValue[fullURL] = isrLocalCache{
+			data:       newData,
+			revalidate: now.Add(time.Duration(config.RevalidateInSec) * time.Second),
+		}
+		return newData
+	}
+	return cached.data.(T)
+}
+
+func (config *RouteConfig[T]) getCachedOrUpdate(fullURL string, w http.ResponseWriter, r *http.Request) T {
+	localCacheMutex.Lock()
+	defer localCacheMutex.Unlock()
+
+	if cached, exists := localCacheValue[fullURL]; exists {
+		return cached.(T)
+	}
+
+	// Not cached yet — generate and cache
+	result := config.Middleware(w, r)
+	localCacheValue[fullURL] = result
+	return result
 }
 
 func (config *RouteConfig[T]) Render(r *http.Request, w http.ResponseWriter, component templ.Component) error {
