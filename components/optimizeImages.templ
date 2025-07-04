@@ -53,19 +53,25 @@ var OptimizedImageConfig = routes.RouteConfig[OptimizedImageProps]{
 
 templ OptimizedImage(componentProps OptimizedImageProps) {
 	if componentProps.IsFirstLoad {
-		<img 
-			alt={ componentProps.Alt }
-			class="w-full h-full"
-			hx-trigger="load"
-			hx-swap="outerHTML"
-			hx-get={ "/components/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
-			src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }
-		/>
+		<div class="relative w-full h-full">
+			<img
+				alt={ componentProps.Alt }
+				src={ "/public/" + componentProps.ImgName + "/blurred." + componentProps.ImgExtension }
+				class="gothic-blur-image absolute inset-0 w-full h-full object-fill z-10"
+			/>
+			<div
+				class="absolute inset-0 w-full h-full z-0"
+				hx-get={ "/optimizedImage/" + componentProps.ImgName + "/" + componentProps.ImgExtension + "?alt=" + componentProps.Alt }
+				hx-trigger="load"
+				hx-swap="outerHTML"
+			></div>
+		</div>
 	} else {
-		<img 
+		<img
 			alt={ componentProps.Alt }
-			class="w-full h-full"
 			src={ "/public/" + componentProps.ImgName + "/original." + componentProps.ImgExtension }
+			class="absolute inset-0 z-0 w-full h-full object-fill"
+			onload="this.parentNode.querySelector('.gothic-blur-image').classList.add('fade-out')"
 		/>
 	}
 }

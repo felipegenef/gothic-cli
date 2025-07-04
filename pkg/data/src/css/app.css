@@ -2,11 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-.htmx-settling img {
-    opacity: 0;
-  }
+/* Smooth transition from low-resolution (blurred) placeholder to full-resolution image. 
+   You can adjust the duration value to control the speed of the transition. */
+.gothic-placeholder-image {
+  @apply absolute inset-0 z-10 opacity-100 transition-opacity ease-in-out duration-1000;
+}
 
-img {
-   transition: opacity 300ms ease-in;
-  }
+.gothic-placeholder-image.fade-out {
+  @apply opacity-0;
+}
+
   
