@@ -37,7 +37,7 @@ type IndexPageProps = interface{}
  *   - For `ISR`, runs at the interval specified by `RevalidateInSec`.
  */
 var IndexConfig = routes.RouteConfig[IndexPageProps]{
-	Type:       routes.DYNAMIC,
+	Type:       routes.STATIC,
 	HttpMethod: routes.GET,
 	Middleware: func(w http.ResponseWriter, r *http.Request) IndexPageProps {
 		return nil

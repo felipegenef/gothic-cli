@@ -72,10 +72,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = config.Middleware(w, r)
-				}
-				config.Render(r, w, component(localCacheValue[fullURL].(T)))
+				config.Render(r, w, component(config.getCachedOrUpdate(fullURL, w, r)))
 			})
 		case POST:
 			r.Post(httpPath, func(w http.ResponseWriter, r *http.Request) {
@@ -85,10 +82,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = config.Middleware(w, r)
-				}
-				config.Render(r, w, component(localCacheValue[fullURL].(T)))
+				config.Render(r, w, component(config.getCachedOrUpdate(fullURL, w, r)))
 			})
 		case PUT:
 			r.Put(httpPath, func(w http.ResponseWriter, r *http.Request) {
@@ -98,10 +92,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = config.Middleware(w, r)
-				}
-				config.Render(r, w, component(localCacheValue[fullURL].(T)))
+				config.Render(r, w, component(config.getCachedOrUpdate(fullURL, w, r)))
 			})
 		case PATCH:
 			r.Patch(httpPath, func(w http.ResponseWriter, r *http.Request) {
@@ -111,10 +102,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = config.Middleware(w, r)
-				}
-				config.Render(r, w, component(localCacheValue[fullURL].(T)))
+				config.Render(r, w, component(config.getCachedOrUpdate(fullURL, w, r)))
 			})
 		case DELETE:
 			r.Delete(httpPath, func(w http.ResponseWriter, r *http.Request) {
@@ -124,10 +112,7 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 					return
 				}
 				fullURL := r.URL.RequestURI() // this includes query parameters
-				if _, exists := localCacheValue[fullURL]; !exists {
-					localCacheValue[fullURL] = config.Middleware(w, r)
-				}
-				config.Render(r, w, component(localCacheValue[fullURL].(T)))
+				config.Render(r, w, component(config.getCachedOrUpdate(fullURL, w, r)))
 			})
 		}
 
@@ -235,10 +220,12 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 func (config *RouteConfig[T]) getISRCachedOrUpdate(fullURL string, w http.ResponseWriter, r *http.Request) T {
 	localCacheMutex.Lock()
 	defer localCacheMutex.Unlock()
+
 	cacheItem, exists := localCacheValue[fullURL]
 	now := time.Now()
 
 	if !exists {
+		// Cache miss: generate and store new data with revalidation time
 		newData := config.Middleware(w, r)
 		localCacheValue[fullURL] = isrLocalCache{
 			data:       newData,
@@ -247,7 +234,19 @@ func (config *RouteConfig[T]) getISRCachedOrUpdate(fullURL string, w http.Respon
 		return newData
 	}
 
-	cached := cacheItem.(isrLocalCache)
+	// Try to assert the cache item to expected struct type
+	cached, ok := cacheItem.(isrLocalCache)
+	if !ok {
+		// Cache is corrupted or wrong type; regenerate
+		newData := config.Middleware(w, r)
+		localCacheValue[fullURL] = isrLocalCache{
+			data:       newData,
+			revalidate: now.Add(time.Duration(config.RevalidateInSec) * time.Second),
+		}
+		return newData
+	}
+
+	// If revalidation time has passed, refresh the data
 	if cached.revalidate.Before(now) {
 		newData := config.Middleware(w, r)
 		localCacheValue[fullURL] = isrLocalCache{
@@ -256,7 +255,19 @@ func (config *RouteConfig[T]) getISRCachedOrUpdate(fullURL string, w http.Respon
 		}
 		return newData
 	}
-	return cached.data.(T)
+
+	// Safe type assertion with check to avoid panic if cached.data is nil
+	if val, ok := cached.data.(T); ok {
+		return val
+	}
+
+	// Fallback: data is nil or not of type T
+	newData := config.Middleware(w, r)
+	localCacheValue[fullURL] = isrLocalCache{
+		data:       newData,
+		revalidate: now.Add(time.Duration(config.RevalidateInSec) * time.Second),
+	}
+	return newData
 }
 
 func (config *RouteConfig[T]) getCachedOrUpdate(fullURL string, w http.ResponseWriter, r *http.Request) T {
@@ -264,10 +275,14 @@ func (config *RouteConfig[T]) getCachedOrUpdate(fullURL string, w http.ResponseW
 	defer localCacheMutex.Unlock()
 
 	if cached, exists := localCacheValue[fullURL]; exists {
-		return cached.(T)
+		// Safe type assertion with check to avoid panic
+		if val, ok := cached.(T); ok {
+			return val
+		}
+		// Fallback if data in cache is nil or wrong type
 	}
 
-	// Not cached yet — generate and cache
+	// Cache miss or failed assertion: generate and store
 	result := config.Middleware(w, r)
 	localCacheValue[fullURL] = result
 	return result
