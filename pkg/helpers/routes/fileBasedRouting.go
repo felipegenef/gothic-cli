@@ -8,10 +8,12 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	helpers "github.com/felipegenef/gothicframework/pkg/helpers"
 	"github.com/go-chi/chi/v5"
+	"github.com/joho/godotenv"
 )
 
 type ConfigType int
@@ -47,33 +49,83 @@ var DefaultConfig = RouteConfig[any]{
 	},
 }
 
+type isrLocalCache struct {
+	data       interface{}
+	revalidate time.Time
+}
+
+var localCacheValue map[string]interface{}
+
 func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, component func(T) templ.Component) {
+	godotenv.Load()
+	var localServe = os.Getenv("LOCAL_SERVE")
+	var isLocal = len(localServe) > 0 && localServe == "true"
 	if config.Type == STATIC {
 		switch config.HttpMethod {
 		case GET:
 			r.Get(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", "max-age=31536000")
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", "max-age=31536000")
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = config.Middleware(w, r)
+				}
+				config.Render(r, w, component(localCacheValue[fullURL].(T)))
 			})
 		case POST:
 			r.Post(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", "max-age=31536000")
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", "max-age=31536000")
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = config.Middleware(w, r)
+				}
+				config.Render(r, w, component(localCacheValue[fullURL].(T)))
 			})
 		case PUT:
 			r.Put(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", "max-age=31536000")
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", "max-age=31536000")
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = config.Middleware(w, r)
+				}
+				config.Render(r, w, component(localCacheValue[fullURL].(T)))
 			})
 		case PATCH:
 			r.Patch(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", "max-age=31536000")
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", "max-age=31536000")
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = config.Middleware(w, r)
+				}
+				config.Render(r, w, component(localCacheValue[fullURL].(T)))
 			})
 		case DELETE:
 			r.Delete(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", "max-age=31536000")
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", "max-age=31536000")
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = config.Middleware(w, r)
+				}
+				config.Render(r, w, component(localCacheValue[fullURL].(T)))
 			})
 		}
 
@@ -109,43 +161,134 @@ func (config *RouteConfig[T]) RegisterRoute(r chi.Router, httpPath string, compo
 		switch config.HttpMethod {
 		case GET:
 			r.Get(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", fmt.Sprintf(
-					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
-					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
-				))
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", fmt.Sprintf(
+						"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+						config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+					))
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				// If cache does not exist create cache for that url and set time to revalidate
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// If cache exists and revalidate time passed recreate cache
+				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// return cached value
+				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
+
 			})
 		case POST:
 			r.Post(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", fmt.Sprintf(
-					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
-					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
-				))
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", fmt.Sprintf(
+						"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+						config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+					))
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				// If cache does not exist create cache for that url and set time to revalidate
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// If cache exists and revalidate time passed recreate cache
+				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// return cached value
+				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
 			})
 		case PUT:
 			r.Put(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", fmt.Sprintf(
-					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
-					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
-				))
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", fmt.Sprintf(
+						"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+						config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+					))
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				// If cache does not exist create cache for that url and set time to revalidate
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// If cache exists and revalidate time passed recreate cache
+				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// return cached value
+				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
 			})
 		case PATCH:
 			r.Patch(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", fmt.Sprintf(
-					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
-					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
-				))
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", fmt.Sprintf(
+						"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+						config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+					))
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				// If cache does not exist create cache for that url and set time to revalidate
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// If cache exists and revalidate time passed recreate cache
+				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// return cached value
+				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
 			})
 		case DELETE:
 			r.Delete(httpPath, func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", fmt.Sprintf(
-					"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
-					config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
-				))
-				config.Render(r, w, component(config.Middleware(w, r)))
+				if !isLocal {
+					w.Header().Set("Cache-Control", fmt.Sprintf(
+						"max-age=%v, stale-while-revalidate=%v, stale-if-error=%v",
+						config.RevalidateInSec, config.RevalidateInSec, config.RevalidateInSec,
+					))
+					config.Render(r, w, component(config.Middleware(w, r)))
+					return
+				}
+				fullURL := r.URL.RequestURI() // this includes query parameters
+				// If cache does not exist create cache for that url and set time to revalidate
+				if _, exists := localCacheValue[fullURL]; !exists {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// If cache exists and revalidate time passed recreate cache
+				if localCacheValue[fullURL].(isrLocalCache).revalidate.After(time.Now()) {
+					localCacheValue[fullURL] = isrLocalCache{data: config.Middleware(w, r), revalidate: time.Now().Add(time.Duration(config.RevalidateInSec * time.Now().Second()))}
+					config.Render(r, w, component(localCacheValue[fullURL].(T)))
+					return
+				}
+				// return cached value
+				config.Render(r, w, component(localCacheValue[fullURL].(isrLocalCache).data.(T)))
 			})
 		}
 	}

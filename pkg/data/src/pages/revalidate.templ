@@ -5,7 +5,6 @@ import (
 	"time"
 	routes "github.com/felipegenef/gothicframework/pkg/helpers/routes"
     "net/http"
-    "os"
 )
 
 /**
@@ -14,8 +13,6 @@ import (
  */
 type RevalidateProps = time.Time
 
-// Keeps track of the last time the page was revalidated locally (used for local development).
-var revalidateLocalTime = time.Now()
 
 /**
  * `RevalidateConfig` defines the configuration for this ISR-enabled route.
@@ -31,26 +28,7 @@ var RevalidateConfig = routes.RouteConfig[RevalidateProps]{
 	Type:          routes.ISR,
 	HttpMethod:    routes.GET,
 	Middleware: func(w http.ResponseWriter, r *http.Request) RevalidateProps {
-		currentTime := time.Now()
-		localServe := os.Getenv("LOCAL_SERVE")
-		isLocal := len(localServe) > 0 && localServe == "true"
-
-		/**
-		 * In local mode, simulate ISR manually using a timestamp.
-		 * This allows you to test regeneration behavior even when not running in a serverless environment.
-		 *
-		 * ⚠️ You can remove the local block if local ISR isn't needed — production behavior doesn't rely on it.
-		 */
-		if isLocal {
-			// Revalidate if more than 10 seconds have passed since last regeneration
-			if currentTime.Sub(revalidateLocalTime) > 10*time.Second {
-				revalidateLocalTime = currentTime
-			}
-			return revalidateLocalTime
-		}
-		
-		return currentTime
-		
+		return time.Now()
 	},
 	RevalidateInSec: 10, // Revalidate this page every 10 seconds
 }
