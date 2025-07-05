@@ -23,15 +23,3 @@ func (t *TemplHelper) Render() error {
 	}
 	return nil
 }
-
-func (helper *TemplHelper) Watch() error {
-	go func() {
-		logger := NewLogger("error", false, os.Stdout)
-
-		templ.Run(context.Background(), logger, templ.Arguments{
-			Watch: true,
-			Proxy: "http://localhost:8080",
-		})
-	}()
-	return nil
-}
