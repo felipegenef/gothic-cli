@@ -97,7 +97,7 @@ func (command *HotReloadCommand) HotReload() error {
 🔥  Mode: HOT RELOAD ENABLED
 `
 	fmt.Println(banner)
-
+	command.openBrowser("http://127.0.0.1:3000")
 	select {}
 
 }
@@ -260,4 +260,21 @@ func (command *HotReloadCommand) rebuild() {
 		}
 	}()
 
+}
+
+func (command *HotReloadCommand) openBrowser(url string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "linux":
+		cmd = exec.Command("xdg-open", url)
+	default:
+		return nil
+	}
+
+	return cmd.Start()
 }

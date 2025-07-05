@@ -233,15 +233,12 @@ func (rt *roundTripper) setShouldSkipResponseModificationHeader(r *http.Request,
 // Modify response to inject script and handle encoding
 func (proxy *ProxyHelper) modifyResponse(r *http.Response) error {
 	urlStr := r.Request.URL.String()
-	log.Printf("Modifying response for URL: %s", urlStr)
 
 	if r.Header.Get("gothic-framework-skip-modify") == "true" {
-		log.Printf("Skipping response modification for %s due to header", urlStr)
 		return nil
 	}
 
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "text/html") {
-		log.Printf("Skipping response modification for %s: not HTML (Content-Type: %s)", urlStr, r.Header.Get("Content-Type"))
 		return nil
 	}
 
@@ -255,10 +252,6 @@ func (proxy *ProxyHelper) modifyResponse(r *http.Response) error {
 	case "br":
 		newReader = func(in io.Reader) (io.Reader, error) { return brotli.NewReader(in), nil }
 		newWriter = func(out io.Writer) io.WriteCloser { return brotli.NewWriter(out) }
-	case "":
-		log.Printf("No content encoding for %s", urlStr)
-	default:
-		log.Printf("%s (encoding: %s)", unsupportedContentEncoding, r.Header.Get("Content-Encoding"))
 	}
 
 	encr, err := newReader(r.Body)
