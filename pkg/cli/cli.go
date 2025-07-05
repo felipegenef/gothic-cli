@@ -50,7 +50,7 @@ func NewCli() GothicCli {
 		AWS:             helpers.NewAwsHelper(),
 		Logger:          helpers.NewLogger("error", false, os.Stdout),
 		FileBasedRouter: routes.NewFileBasedRouteHelper(),
-		Proxy:           proxy.NewProxy(),
+		Proxy:           proxy.NewProxyHelper(),
 	}
 
 	return cli

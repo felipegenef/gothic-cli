@@ -28,13 +28,11 @@ var reloadScriptJS string
 
 var errBodyNotFound = fmt.Errorf("body not found")
 
-const unsupportedContentEncoding = "Unsupported content encoding, hot reload script not inserted."
-
 type ProxyHelper struct {
 	URL    string
 	Target *url.URL
 	p      *httputil.ReverseProxy
-	Sse    *SSEHandler
+	Sse    *sseHandler
 }
 
 // RoundTripper with retries
@@ -51,20 +49,20 @@ type event struct {
 	Data string
 }
 
-type SSEHandler struct {
+type sseHandler struct {
 	m        *sync.Mutex
 	counter  int64
 	requests map[int64]chan event
 }
 
-func NewProxy() ProxyHelper {
+func NewProxyHelper() ProxyHelper {
 	return ProxyHelper{
-		Sse: NewSSEHandler(),
+		Sse: NewsseHandler(),
 	}
 }
 
-func NewSSEHandler() *SSEHandler {
-	return &SSEHandler{
+func NewsseHandler() *sseHandler {
+	return &sseHandler{
 		m:        new(sync.Mutex),
 		requests: make(map[int64]chan event),
 	}
@@ -122,7 +120,7 @@ func (proxy *ProxyHelper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // SSE methods
 
-func (s *SSEHandler) Send(eventType string, data string) {
+func (s *sseHandler) Send(eventType string, data string) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	for _, ch := range s.requests {
@@ -136,7 +134,7 @@ func (s *SSEHandler) Send(eventType string, data string) {
 	}
 }
 
-func (s *SSEHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *sseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Content-Type", "text/event-stream")

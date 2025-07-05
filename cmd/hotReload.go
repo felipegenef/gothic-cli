@@ -19,6 +19,7 @@ import (
 
 	gothic_cli "github.com/felipegenef/gothicframework/pkg/cli"
 	"github.com/fsnotify/fsnotify"
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
 
@@ -73,7 +74,12 @@ func newHotReloadCommand(cli gothic_cli.GothicCli) RunEFunc {
 }
 
 func (command *HotReloadCommand) HotReload() error {
-	targetURL, err := url.Parse("http://localhost:8080")
+	godotenv.Load()
+	port := os.Getenv("HTTP_LISTEN_ADDR")
+	if port == "" {
+		port = ":8080"
+	}
+	targetURL, err := url.Parse("http://localhost" + port)
 	if err != nil {
 		log.Fatalf("Invalid target URL: %v", err)
 	}
@@ -81,7 +87,6 @@ func (command *HotReloadCommand) HotReload() error {
 	// Wait for tailwind process to render css for the first time
 	time.Sleep(4 * time.Second)
 	go command.watchForChanges()
-	// go command.watchTemplChanges()
 	go command.cli.Proxy.RunProxy("localhost", 3000, targetURL)
 
 	banner := `
