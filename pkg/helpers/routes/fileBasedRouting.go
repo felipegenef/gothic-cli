@@ -648,7 +648,7 @@ func (helper *FileBasedRouteHelper) RemoveDuplicates() {
 		}
 	}
 	for _, route := range helper.TemplateInfo.ApiRoutes {
-		if route.ConfigName == "DefaultConfig" {
+		if route.ConfigName == "DefaultApiConfig" {
 			helper.TemplateInfo.ImportDefault = true
 		}
 	}
