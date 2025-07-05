@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,9 +17,7 @@ import (
 	"sync"
 	"time"
 
-	templGenerate "github.com/a-h/templ/cmd/templ/generatecmd"
 	gothic_cli "github.com/felipegenef/gothicframework/pkg/cli"
-	gothic_helpers "github.com/felipegenef/gothicframework/pkg/helpers"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -74,11 +73,16 @@ func newHotReloadCommand(cli gothic_cli.GothicCli) RunEFunc {
 }
 
 func (command *HotReloadCommand) HotReload() error {
+	targetURL, err := url.Parse("http://localhost:8080")
+	if err != nil {
+		log.Fatalf("Invalid target URL: %v", err)
+	}
 	go command.watchTailwindChanges()
 	// Wait for tailwind process to render css for the first time
 	time.Sleep(4 * time.Second)
 	go command.watchForChanges()
-	go command.watchTemplChanges()
+	// go command.watchTemplChanges()
+	go command.cli.Proxy.RunProxy("localhost", 3000, targetURL)
 
 	banner := `
  ██████╗  ██████╗ ████████╗██╗  ██╗██╗ ██████╗     █████╗ ██████╗ ██████╗ 
@@ -89,7 +93,7 @@ func (command *HotReloadCommand) HotReload() error {
  ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝    ╚═╝  ╚═╝╚═╝     ╚═╝     
 
 🚀 Gothic App is up and running!
-🌐 Listening on: http://127.0.0.1:7331
+🌐 Listening on: http://127.0.0.1:3000
 🔥  Mode: HOT RELOAD ENABLED
 `
 	fmt.Println(banner)
@@ -209,16 +213,6 @@ func (command *HotReloadCommand) watchTailwindChanges() {
 	}()
 }
 
-func (command *HotReloadCommand) watchTemplChanges() {
-	logger := gothic_helpers.NewLogger("error", false, os.Stdout)
-
-	templGenerate.Run(context.Background(), logger, templGenerate.Arguments{
-		Watch:       true,
-		Proxy:       "http://localhost:8080",
-		OpenBrowser: true,
-	})
-}
-
 func (command *HotReloadCommand) rebuild() {
 	command.mutex.Lock()
 	defer command.mutex.Unlock()
@@ -226,6 +220,12 @@ func (command *HotReloadCommand) rebuild() {
 	log.Println("Build routes...")
 	if err := command.cli.FileBasedRouter.Render(command.cli.GetConfig().GoModName); err != nil {
 		fmt.Printf("error building routes: %v", err)
+		return
+	}
+
+	log.Println("Build templ...")
+	if err := command.cli.Templ.Render(); err != nil {
+		fmt.Printf("error building templ: %v", err)
 		return
 	}
 
@@ -251,6 +251,7 @@ func (command *HotReloadCommand) rebuild() {
 	runCmd.Stdout = os.Stdout
 	runCmd.Stderr = os.Stderr
 	command.runCmd = runCmd
+	command.cli.Proxy.Sse.Send("message", "reload")
 	go func() {
 		if err := runCmd.Run(); err != nil {
 			if ctx.Err() == nil {
