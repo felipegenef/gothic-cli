@@ -50,6 +50,10 @@ var DefaultConfig = RouteConfig[any]{
 	},
 }
 
+var DefaultApiConfig = ApiRouteConfig{
+	HttpMethod: GET,
+}
+
 type isrLocalCache struct {
 	data       any
 	revalidate time.Time
@@ -481,7 +485,7 @@ func (helper *FileBasedRouteHelper) collectComponentsInfo(goModName string) erro
 			if len(configMatch) > 1 {
 				route.ConfigName = configMatch[1]
 			} else {
-				route.ConfigName = "DefaultApiConfig"
+				route.ConfigName = "DefaultConfig"
 				route.ConfigPackageName = "routes"
 			}
 
