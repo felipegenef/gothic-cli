@@ -48,7 +48,7 @@ Resources:
         Variables:
           # Auto-generated code during deployment. Do not modify this section directly.
           # To make changes, update the values in gothic-config.json instead.
-          HTTP_LISTEN_ADDR: !FindInMap [StagesMap, !Ref Stage, HttpServerPort]
+          HTTP_LISTEN_ADDR: !FindInMap [StagesMap, !Ref Stage, HttpServerPort]  ## Labda WEB adapters use port 8080 by default.
           {{- range .StageTemplateInfo.Env }}
           "{{ .Key }}": !FindInMap [StagesMap, !Ref Stage, "{{ .Key }}"]
           {{- end }}
@@ -152,7 +152,7 @@ Resources:
       SetIdentifier: !Sub "${AWS::StackName}-custom-domain-record"
       AliasTarget:
         DNSName: !GetAtt CloudFrontDistribution.DomainName
-        HostedZoneId: "Z2FDTNDATAQYW2"
+        HostedZoneId: "Z2FDTNDATAQYW2" # Mocked value for all cloudfront apis besides china (Z3RFFRIM2A3IF5)
 {{- end }}
 
   ServerLambdaInvokePermissionForCloudFront:
