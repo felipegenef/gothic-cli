@@ -4,6 +4,8 @@ Description: >
  This "{{.ProjectName}}" SAM stack is a Gothic App. You can extend the infrastructure as code by adding additional resources directly to the template file.
 
 Globals:
+# Auto-generated code during deployment. Do not modify this section directly.
+# To make changes, update the values in gothic-config.json instead.
   Function:
     Timeout: {{.Timeout}}
     MemorySize: {{.MemorySize}}
@@ -31,7 +33,7 @@ Mappings:
       {{- range .StageTemplateInfo.Env }}
       "{{ .Key }}": {{ .Value }}
       {{- end }}
-      HttpServerPort: ":8080"
+      HttpServerPort: ":8080" ## Labda WEB adapters use port 8080 by default. You can change that by setting env HTTP_LISTEN_ADDR and PORT to the new port.
 
 Conditions:
   IsUSEast1: !Equals [ !Ref "AWS::Region", "us-east-1" ]
@@ -48,7 +50,7 @@ Resources:
         Variables:
           # Auto-generated code during deployment. Do not modify this section directly.
           # To make changes, update the values in gothic-config.json instead.
-          HTTP_LISTEN_ADDR: !FindInMap [StagesMap, !Ref Stage, HttpServerPort]  ## Labda WEB adapters use port 8080 by default.
+          HTTP_LISTEN_ADDR: !FindInMap [StagesMap, !Ref Stage, HttpServerPort]  ## Labda WEB adapters use port 8080 by default. You can change that by setting env HTTP_LISTEN_ADDR and PORT to the new port.
           {{- range .StageTemplateInfo.Env }}
           "{{ .Key }}": !FindInMap [StagesMap, !Ref Stage, "{{ .Key }}"]
           {{- end }}
