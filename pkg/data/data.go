@@ -89,12 +89,10 @@ var DefaultCLIData = GothicCliData{
 		"public/styles.css":                 publicFolder,
 	},
 	TemplateFiles: map[string]embed.FS{
-		".gothicCli/templates/Dockerfile-template":                  templatesFolder,
-		".gothicCli/templates/samconfig-template.toml":              templatesFolder,
-		".gothicCli/templates/template-custom-domain-with-arn.yaml": templatesFolder,
-		".gothicCli/templates/template-custom-domain.yaml":          templatesFolder,
-		".gothicCli/templates/template-default.yaml":                templatesFolder,
-		".gothicCli/templates/autoGenRoutes.go":                     templatesFolder,
+		".gothicCli/templates/Dockerfile-template":     templatesFolder,
+		".gothicCli/templates/samconfig-template.toml": templatesFolder,
+		".gothicCli/templates/sam-template.yaml":       templatesFolder,
+		".gothicCli/templates/autoGenRoutes.go":        templatesFolder,
 	},
 	InitialFiles: map[string]embed.FS{
 		// route files

@@ -32,13 +32,15 @@ type EnvValueInfo struct {
 	Key   string
 }
 type StageTemplateInfo struct {
-	Name           string
-	BucketName     string
-	LambdaName     string
-	CustomDomain   string
-	HostedZone     string
-	CertificateArn string
-	Env            []EnvValueInfo
+	Name                  string
+	BucketName            string
+	LambdaName            string
+	CustomDomain          string
+	HostedZone            string
+	CertificateArn        string
+	IsCustomDomainWithArn bool
+	IsCustomDomain        bool
+	Env                   []EnvValueInfo
 }
 
 type SamYamlTemplateInfo struct {

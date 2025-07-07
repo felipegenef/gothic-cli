@@ -149,6 +149,10 @@ func (command *DeployCommand) setup(stage string) error {
 	yamlInfo.StageTemplateInfo.CertificateArn = ""
 	yamlInfo.StageTemplateInfo.HostedZone = ""
 	yamlInfo.StageTemplateInfo.CustomDomain = ""
+	yamlInfo.StageTemplateInfo.IsCustomDomain = false
+	yamlInfo.StageTemplateInfo.IsCustomDomainWithArn = false
+	yamlInfo.UsedTemplateName = ".gothicCli/templates/sam-template.yaml"
+
 	var env []helpers.EnvValueInfo
 
 	for key, val := range envConfig.ENV {
@@ -183,14 +187,12 @@ func (command *DeployCommand) setup(stage string) error {
 		yamlInfo.StageTemplateInfo.HostedZone = `hostedZoneId: "` + *envConfig.HostedZoneId + `"`
 
 		if envConfig.CertificateArn != nil {
-			yamlInfo.UsedTemplateName = ".gothicCli/templates/template-custom-domain-with-arn.yaml"
+			yamlInfo.StageTemplateInfo.IsCustomDomainWithArn = true
 			yamlInfo.StageTemplateInfo.CertificateArn = `certificateArn: "` + *envConfig.CertificateArn + `"`
 		} else {
-			yamlInfo.UsedTemplateName = ".gothicCli/templates/template-custom-domain.yaml"
+			yamlInfo.StageTemplateInfo.IsCustomDomain = true
 		}
 
-	} else {
-		yamlInfo.UsedTemplateName = ".gothicCli/templates/template-default.yaml"
 	}
 	command.cli.Templates.CopyFile(yamlInfo.UsedTemplateName, "template.yaml")
 	command.cli.Templates.UpdateFromTemplate("template.yaml", "template.yaml", yamlInfo)
